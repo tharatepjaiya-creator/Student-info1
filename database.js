@@ -135,9 +135,8 @@ const seedData = async () => {
 };
 
 // Run init on start
-initDb();
-
 module.exports = {
     query,
-    pool
+    pool,
+    initDb
 };

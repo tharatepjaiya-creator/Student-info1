@@ -6,7 +6,6 @@ const db = require('../database');
 const bcrypt = require('bcrypt');
 
 // Configure Multer for File Uploads
-// Configure Multer for File Uploads
 const os = require('os');
 const isProduction = process.env.NODE_ENV === 'production';
 const uploadDir = isProduction ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, '../uploads');

@@ -41,7 +41,9 @@ app.get('/', (req, res) => {
 });
 
 // Sync Database
-// Database is initialized on require
+// Sync Database
+// Initialize DB (Fire and forget, but log errors)
+db.initDb().catch(err => console.error('Failed to initialize DB:', err));
 
 // Start Server
 // Start Server
