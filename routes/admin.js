@@ -6,9 +6,13 @@ const fs = require('fs');
 const db = require('../database');
 const bcrypt = require('bcrypt');
 
-const uploadDir = 'd:/studentinfoweb/uploads';
+const uploadDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadDir)){
-    fs.mkdirSync(uploadDir);
+    try {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    } catch (err) {
+        console.error('Failed to create upload directory:', err);
+    }
 }
 
 // Configure Multer for Admin Uploads
