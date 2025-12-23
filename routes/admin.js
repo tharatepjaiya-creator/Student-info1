@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../database');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const os = require('os');
 
 // Use /tmp on Vercel (read-only filesystem otherwise), or local uploads folder
