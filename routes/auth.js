@@ -6,9 +6,22 @@ const db = require('../database');
 const bcrypt = require('bcrypt');
 
 // Configure Multer for File Uploads
+// Configure Multer for File Uploads
+const os = require('os');
+const isProduction = process.env.NODE_ENV === 'production';
+const uploadDir = isProduction ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, '../uploads');
+
+if (!fs.existsSync(uploadDir)){
+    try {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    } catch (err) {
+        console.error('Failed to create upload directory:', err);
+    }
+}
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
         cb(null, Date.now() + path.extname(file.originalname)); // Unique filename

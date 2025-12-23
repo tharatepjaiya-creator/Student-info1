@@ -5,12 +5,19 @@ require('dotenv').config();
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Use DATABASE_URL from environment (Vercel provides this)
-// Fallback for local dev if not provided (though you should provide it to test)
 const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+    console.error('CRITICAL: DATABASE_URL is missing. Please check Vercel Environment Variables.');
+}
 
 const pool = new Pool({
     connectionString: connectionString,
     ssl: isProduction ? { rejectUnauthorized: false } : false
+});
+
+pool.on('error', (err, client) => {
+    console.error('Unexpected error on idle client', err);
 });
 
 // Helper for running queries

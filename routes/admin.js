@@ -6,7 +6,11 @@ const fs = require('fs');
 const db = require('../database');
 const bcrypt = require('bcrypt');
 
-const uploadDir = path.join(__dirname, '../uploads');
+const os = require('os');
+// Use /tmp on Vercel (read-only filesystem otherwise), or local uploads folder
+const isProduction = process.env.NODE_ENV === 'production';
+const uploadDir = isProduction ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, '../uploads');
+
 if (!fs.existsSync(uploadDir)){
     try {
         fs.mkdirSync(uploadDir, { recursive: true });
