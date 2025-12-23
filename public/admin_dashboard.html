@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แดชบอร์ดผู้ดูแลระบบ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="bg-shape shape-1" style="background: #ffcc00;"></div>
+
+    <nav class="navbar navbar-expand-lg glass-nav mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">Admin Dashboard</a>
+            <button class="btn btn-outline-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="glass-card text-center">
+                    <h3>นักศึกษาทั้งหมด</h3>
+                    <h1 id="totalStudents">-</h1>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="glass-card text-center">
+                    <h3>แผนกวิชา</h3>
+                    <h1 id="totalDepts">-</h1>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-container">
+            <ul class="nav nav-tabs mb-3" id="adminTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" id="students-tab" data-bs-toggle="tab" data-bs-target="#students" type="button">จัดการนักศึกษา</button>
+                </li>
+
+                <li class="nav-item">
+                    <button class="nav-link" id="news-tab" data-bs-toggle="tab" data-bs-target="#news" type="button">ข่าวสาร/ประกาศ</button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="adminTabContent">
+                <!-- Students Tab -->
+                <div class="tab-pane fade show active" id="students" role="tabpanel">
+                    <div class="d-flex gap-2 mb-3">
+                        <input type="text" class="form-control" id="studentSearch" placeholder="ค้นหาตามชื่อ..." style="max-width: 250px;">
+                        <select class="form-select" id="filterLevel" style="max-width: 150px;">
+                            <option value="">ทุกระดับชั้น</option>
+                            <option value="ปวช.1">ปวช. 1</option>
+                            <option value="ปวช.2">ปวช. 2</option>
+                            <option value="ปวช.3">ปวช. 3</option>
+                            <option value="ปวส.1">ปวส. 1</option>
+                            <option value="ปวส.2">ปวส. 2</option>
+                        </select>
+                        <select class="form-select" id="filterDept" style="max-width: 200px;">
+                            <option value="">แผนกวิชา</option>
+                        </select>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>รหัส</th>
+                                    <th>ชื่อ-นามสกุล</th>
+                                    <th>แผนก</th>
+                                    <th>เบอร์โทร</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsTableBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Announcements Tab -->
+                <div class="tab-pane fade" id="news" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="mb-0">รายการประกาศ</h4>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#announcementModal">
+                            <i class="bi bi-plus-lg"></i> สร้างประกาศใหม่
+                        </button>
+                    </div>
+
+                    <div id="adminNewsList" class="row">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Announcement Modal -->
+    <div class="modal fade" id="announcementModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">สร้างประกาศใหม่</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addNewsForm">
+                        <div class="mb-3">
+                            <label class="form-label">หัวข้อประกาศ</label>
+                            <input type="text" class="form-control" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">เนื้อหา</label>
+                            <textarea class="form-control" name="content" rows="4" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">รูปภาพประกอบ</label>
+                            <input type="file" class="form-control" name="image" accept="image/*">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">เลือกแผนก (เว้นว่างหากเป็นประกาศทั่วไป)</label>
+                            <select class="form-select" name="department_id" id="newsDeptSelect">
+                                <option value="">ทุกแผนก (ทั่วไป)</option>
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">โพสต์ประกาศ</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Edit Modal -->
+    <div class="modal fade" id="editStudentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square"></i> แก้ไขข้อมูลนักศึกษา</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#edit-info" type="button">ข้อมูลส่วนตัว</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#edit-password" type="button">เปลี่ยนรหัสผ่าน</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content">
+                        <!-- Info Tab -->
+                        <div class="tab-pane fade show active" id="edit-info" role="tabpanel">
+                            <div class="text-center mb-4 position-relative">
+                                <img id="editProfileImage" src="img/placeholder.png" class="rounded-circle shadow-sm" style="width: 120px; height: 120px; object-fit: cover;">
+                                <button class="btn btn-sm btn-light position-absolute bottom-0 start-50 translate-middle-x mb-0 shadow-sm rounded-pill" onclick="document.getElementById('uploadEditImage').click()">
+                                    <i class="bi bi-camera-fill"></i> เปลี่ยนรูป
+                                </button>
+                                <input type="file" id="uploadEditImage" class="d-none" accept="image/*" onchange="uploadStudentImage(this)">
+                            </div>
+                            
+                            <form id="editStudentForm">
+                                <input type="hidden" id="editStudentId">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">รหัสนักศึกษา</label>
+                                        <input type="text" class="form-control" id="editStudentCode" readonly disabled>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">คำนำหน้า</label>
+                                        <select class="form-select" id="editPrefix">
+                                            <option value="นาย">นาย</option>
+                                            <option value="นางสาว">นางสาว</option>
+                                            <option value="นาง">นาง</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">ชื่อ</label>
+                                        <input type="text" class="form-control" id="editFirstName" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">นามสกุล</label>
+                                        <input type="text" class="form-control" id="editLastName" required>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <label class="form-label">ระดับชั้น</label>
+                                        <select class="form-select" id="editLevel">
+                                             <option value="ปวช.1">ปวช. 1</option>
+                                            <option value="ปวช.2">ปวช. 2</option>
+                                            <option value="ปวช.3">ปวช. 3</option>
+                                            <option value="ปวส.1">ปวส. 1</option>
+                                            <option value="ปวส.2">ปวส. 2</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">แผนกวิชา</label>
+                                        <select class="form-select" id="editDept">
+                                            <!-- JS populated -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">วันเกิด</label>
+                                        <input type="date" class="form-control" id="editDob">
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <label class="form-label">กรุ๊ปเลือด</label>
+                                       <select class="form-select" id="editBlood">
+                                            <option value="">ไม่ระบุ</option>
+                                            <option value="A">A</option>
+                                            <option value="B">B</option>
+                                            <option value="AB">AB</option>
+                                            <option value="O">O</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">เบอร์โทร</label>
+                                        <input type="text" class="form-control" id="editPhone">
+                                    </div>
+
+                                    <div class="col-12"><hr class="my-2"></div>
+                                    <div class="col-12 text-muted mb-2"><strong>ข้อมูลผู้ปกครอง</strong></div>
+                                    
+                                    <div class="col-md-6">
+                                        <label class="form-label">ชื่อบิดา</label>
+                                        <input type="text" class="form-control" id="editFather">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">ชื่อมารดา</label>
+                                        <input type="text" class="form-control" id="editMother">
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label">เบอร์โทรศัพท์ผู้ปกครอง</label>
+                                        <input type="text" class="form-control" id="editParentPhone">
+                                    </div>
+                                    
+                                    <div class="col-12 mt-4 text-end">
+                                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save"></i> บันทึกข้อมูล</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Password Tab -->
+                        <div class="tab-pane fade" id="edit-password" role="tabpanel">
+                             <form id="editPasswordForm" class="p-3">
+                                <div class="mb-3">
+                                    <label class="form-label">ตั้งรหัสผ่านใหม่</label>
+                                    <input type="text" class="form-control" id="editNewPassword" minlength="4" placeholder="กรอกรหัสผ่านใหม่ที่ต้องการ">
+                                    <div class="form-text">รหัสผ่านต้องมีความยาวอย่างน้อย 4 ตัวอักษร</div>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-warning text-dark"><i class="bi bi-key"></i> เปลี่ยนรหัสผ่าน</button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="resetPasswordFromEdit()">รีเซ็ตเป็นวันเกิด (DDMMYYYY)</button>
+                                </div>
+                             </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        // Global Modal Instances
+        let announcementModal;
+        let changePasswordModal;
+        let profileModal;
+        document.addEventListener('DOMContentLoaded', () => {
+            announcementModal = new bootstrap.Modal(document.getElementById('announcementModal'));
+            changePasswordModal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+            profileModal = new bootstrap.Modal(document.getElementById('profileModal'));
+        });
+
+        // ... existing code ...
+
+
+
+        function handleLogout() {
+            fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.href = 'index.html');
+        }
+
+        // Fetch Stats
+        fetch('/api/admin/stats').then(res => {
+            if (res.status === 401) window.location.href = 'index.html';
+            return res.json();
+        }).then(data => {
+            if (data.error) return;
+            document.getElementById('totalStudents').innerText = data.students;
+            document.getElementById('totalDepts').innerText = data.departments;
+        });
+
+        // Initialize Data
+        loadDepartments();
+        loadStudents();
+        loadAdminNews();
+
+        function loadDepartments() {
+            fetch('/api/admin/departments').then(res => res.json()).then(data => {
+                const filter = document.getElementById('filterDept');
+                const select = document.getElementById('newsDeptSelect');
+                
+                filter.innerHTML = '<option value="">ทุกแผนก</option>';
+                select.innerHTML = '<option value="">ทุกแผนก (ทั่วไป)</option>'; // Default option
+
+                data.forEach(d => {
+                    // Filter
+                    const opt1 = document.createElement('option');
+                    opt1.value = d.department_name;
+                    opt1.innerText = d.department_name;
+                    filter.appendChild(opt1);
+
+                    // Announcement Select
+                    const opt2 = document.createElement('option');
+                    opt2.value = d.department_id;
+                    opt2.innerText = d.department_name;
+                    select.appendChild(opt2);
+                });
+            });
+        }
+
+        function loadStudents() {
+            fetch('/api/admin/students').then(res => res.json()).then(data => {
+                const tbody = document.getElementById('studentsTableBody');
+                const search = document.getElementById('studentSearch').value.toLowerCase();
+                const filterDept = document.getElementById('filterDept').value;
+                const filterLevel = document.getElementById('filterLevel').value;
+                
+                tbody.innerHTML = '';
+                
+                data.forEach(student => {
+                    const name = `${student.first_name} ${student.last_name}`.toLowerCase();
+                    const dept = student.department_name || '';
+                    const level = student.level || '';
+                    
+                    if ((name.includes(search) || student.student_code.includes(search)) && 
+                        (filterDept === '' || dept === filterDept) &&
+                        (filterLevel === '' || level === filterLevel)) {
+                        
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${student.student_code}</td>
+                            <td>${student.first_name} ${student.last_name}</td>
+                            <td>${student.department_name}</td>
+                            <td>${student.phone}</td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-warning" onclick="openEditStudentModal('${student.student_id}')" title="แก้ไขข้อมูล">
+                                        <i class="bi bi-pencil-square"></i> แก้ไข
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteStudent('${student.student_id}')" title="ลบข้อมูล">
+                                        <i class="bi bi-trash-fill"></i> ลบ
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    }
+                });
+            });
+        }
+        
+        document.getElementById('studentSearch').addEventListener('input', loadStudents);
+        document.getElementById('filterDept').addEventListener('change', loadStudents);
+        document.getElementById('filterLevel').addEventListener('change', loadStudents);
+
+        // Edit Student Logic
+        let editStudentModal;
+        document.addEventListener('DOMContentLoaded', () => {
+             // ... existing
+             editStudentModal = new bootstrap.Modal(document.getElementById('editStudentModal'));
+        });
+
+        function openEditStudentModal(id) {
+            fetch(`/api/admin/students/${id}`)
+                .then(res => res.json())
+                .then(student => {
+                    if(student.error) return alert(student.error);
+                    
+                    document.getElementById('editStudentId').value = student.student_id;
+                    document.getElementById('editStudentCode').value = student.student_code;
+                    document.getElementById('editPrefix').value = student.prefix;
+                    document.getElementById('editFirstName').value = student.first_name;
+                    document.getElementById('editLastName').value = student.last_name;
+                    document.getElementById('editLevel').value = student.level;
+                    document.getElementById('editDob').value = student.dob;
+                    document.getElementById('editBlood').value = student.blood_group || '';
+                    document.getElementById('editPhone').value = student.phone;
+                    document.getElementById('editFather').value = student.father_name || '';
+                    document.getElementById('editMother').value = student.mother_name || '';
+                    document.getElementById('editParentPhone').value = student.parent_phone || '';
+                    
+                    // Image
+                    const img = document.getElementById('editProfileImage');
+                    img.src = student.student_image || 'img/placeholder.png';
+                    img.onerror = () => { img.src = 'img/placeholder.png'; };
+                    
+                    // Populate Depts in Edit Modal if empty
+                    const deptSelect = document.getElementById('editDept');
+                    if(deptSelect.options.length === 0) {
+                         fetch('/api/admin/departments').then(res=>res.json()).then(depts => {
+                            depts.forEach(d => {
+                                const opt = document.createElement('option');
+                                opt.value = d.department_id;
+                                opt.innerText = d.department_name;
+                                deptSelect.appendChild(opt);
+                            });
+                             deptSelect.value = student.department_id;
+                         });
+                    } else {
+                        deptSelect.value = student.department_id;
+                    }
+
+                    editStudentModal.show();
+                });
+        }
+        
+        document.getElementById('editStudentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editStudentId').value;
+            const body = {
+                prefix: document.getElementById('editPrefix').value,
+                first_name: document.getElementById('editFirstName').value,
+                last_name: document.getElementById('editLastName').value,
+                level: document.getElementById('editLevel').value,
+                department_id: document.getElementById('editDept').value,
+                dob: document.getElementById('editDob').value,
+                blood_group: document.getElementById('editBlood').value,
+                phone: document.getElementById('editPhone').value,
+                father_name: document.getElementById('editFather').value,
+                mother_name: document.getElementById('editMother').value,
+                parent_phone: document.getElementById('editParentPhone').value
+            };
+            
+            fetch(`/api/admin/students/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    alert('บันทึกข้อมูลสำเร็จ');
+                    editStudentModal.hide();
+                    loadStudents();
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + data.error);
+                }
+            });
+        });
+
+        // Password in Edit Modal
+        document.getElementById('editPasswordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editStudentId').value;
+            const newPassword = document.getElementById('editNewPassword').value;
+            
+             fetch(`/api/admin/students/${id}/change-password`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newPassword }) 
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message || 'เปลี่ยนรหัสผ่านสำเร็จ');
+                document.getElementById('editNewPassword').value = '';
+            });
+        });
+        
+        function resetPasswordFromEdit() {
+            const id = document.getElementById('editStudentId').value;
+             if(confirm('ยืนยันที่จะรีเซ็ตรหัสผ่านเป็น วันเกิด (DDMMYYYY) หรือไม่?')) {
+                fetch(`/api/admin/students/${id}/reset-password`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => alert(data.message));
+            }
+        }
+        
+        function uploadStudentImage(input) {
+            if (input.files && input.files[0]) {
+                const studentId = document.getElementById('editStudentId').value;
+                const formData = new FormData();
+                formData.append('student_image', input.files[0]);
+
+                fetch(`/api/admin/students/${studentId}/upload-image`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Refresh Image
+                        const img = document.getElementById('editProfileImage');
+                        img.src = data.imagePath + '?t=' + new Date().getTime(); // Prevent caching
+                        alert('อัปเดตรูปภาพเรียบร้อยแล้ว');
+                    } else {
+                        alert('เกิดข้อผิดพลาด: ' + data.error);
+                    }
+                })
+                .catch(err => alert('Uploading failed'));
+            }
+        }
+
+        function deleteStudent(id) {
+            if(confirm('ต้องการลบนักศึกษาคนนี้หรือไม่?')) {
+                fetch(`/api/admin/students/${id}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('ลบข้อมูลสำเร็จ');
+                            loadStudents();
+                        } else {
+                            alert('ลบไม่สำเร็จ: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(err => alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err));
+            }
+        }
+
+        // News Logic
+        function loadAdminNews() {
+            fetch('/api/admin/announcements')
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById('adminNewsList');
+                if (data.length === 0) {
+                    list.innerHTML = '<div class="col-12 text-center text-muted py-5">ยังไม่มีประกาศข่าว</div>';
+                    return;
+                }
+                list.innerHTML = data.map(n => `
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge bg-info text-dark">${n.department_name || 'ทั่วไป'}</span>
+                                    <button class="btn btn-sm btn-outline-danger border-0" onclick="deleteNews(${n.id})">&times;</button>
+                                </div>
+                                <h5 class="card-title">${n.title}</h5>
+                                ${n.image ? `<img src="${n.image}" class="img-fluid rounded mb-2" style="max-height: 150px; object-fit: cover;">` : ''}
+                                <p class="card-text small text-secondary">${n.content}</p>
+                                <p class="card-text"><small class="text-muted">${new Date(n.created_at).toLocaleDateString('th-TH')}</small></p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            });
+        }
+
+        document.getElementById('addNewsForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            fetch('/api/admin/announcements', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert('เกิดข้อผิดพลาด: ' + data.error);
+                } else {
+                    e.target.reset();
+                    announcementModal.hide();
+                    loadAdminNews();
+                    alert('โพสต์ประกาศเรียบร้อยแล้ว');
+                }
+            })
+            .catch(err => alert('เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว'));
+        });
+
+        function deleteNews(id) {
+            if(confirm('ต้องการลบประกาศนี้หรือไม่?')) {
+                fetch(`/api/admin/announcements/${id}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data.success) loadAdminNews();
+                    });
+            }
+        }
+    </script>
+</body>
+</html>

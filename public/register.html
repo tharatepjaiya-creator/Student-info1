@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ลงทะเบียน - ระบบสารสนเทศนักศึกษา</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="bg-shape shape-1"></div>
+    <div class="container mt-5">
+        <div class="glass-container">
+            <h2 class="mb-4 text-center">ลงทะเบียนนักศึกษาใหม่</h2>
+            <form id="registerForm">
+                <div class="row">
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">คำนำหน้า</label>
+                        <select class="form-select" name="prefix" required>
+                            <option value="นาย">นาย</option>
+                            <option value="นางสาว">นางสาว</option>
+                            <option value="นาง">นาง</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5 mb-3">
+                        <label class="form-label">ชื่อจริง</label>
+                        <input type="text" class="form-control" name="first_name" required oninput="this.value = this.value.replace(/[^a-zA-Z\u0E00-\u0E7F\s]/g, '')">
+                    </div>
+                    <div class="col-md-5 mb-3">
+                        <label class="form-label">นามสกุล</label>
+                        <input type="text" class="form-control" name="last_name" required oninput="this.value = this.value.replace(/[^a-zA-Z\u0E00-\u0E7F\s]/g, '')">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">รหัสนักศึกษา</label>
+                    <input type="text" class="form-control" name="student_code" placeholder="เช่น 6831909xxxx" required oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">ระดับชั้น</label>
+                        <select class="form-select" name="level" required>
+                            <option value="" selected disabled>เลือกระดับชั้น</option>
+                            <option value="ปวช.1">ปวช. 1</option>
+                            <option value="ปวช.2">ปวช. 2</option>
+                            <option value="ปวช.3">ปวช. 3</option>
+                            <option value="ปวส.1">ปวส. 1</option>
+                            <option value="ปวส.2">ปวส. 2</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">แผนกวิชา</label>
+                        <select class="form-select" name="department_id" id="deptSelect" required>
+                             <option selected disabled value="">เลือกแผนกวิชา</option>
+                
+                            <!-- Populated by JS -->
+                        </select>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">กรุ๊ปเลือด</label>
+                        <select class="form-select" name="blood_group">
+                            <option value="" selected>ไม่ระบุ</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="AB">AB</option>
+                            <option value="O">O</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">เดือน/วัน/ปีเกิด (ค.ศ.)</label>
+                        <input type="date" class="form-control" name="dob" required>
+                        <div class="form-text"><span class="text-danger">หมายเหตุ!</span> รหัสผ่านจะเป็น (พ.ศ. เช่น วัน/เดือน/ปีเกิด)</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">เบอร์โทรศัพท์</label>
+                    <input type="tel" class="form-control" name="phone" required oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+
+                <h5 class="mb-3 text-secondary border-bottom pb-2">ข้อมูลผู้ปกครอง</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">ชื่อ-นามสกุล บิดา</label>
+                        <input type="text" class="form-control" name="father_name">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">ชื่อ-นามสกุล มารดา</label>
+                        <input type="text" class="form-control" name="mother_name">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">เบอร์โทรศัพท์ผู้ปกครอง</label>
+                    <input type="tel" class="form-control" name="parent_phone" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">ลงทะเบียน</button>
+                    <a href="index.html" class="btn btn-link">กลับไปหน้าเข้าสู่ระบบ</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+        // Fetch Departments
+        fetch('/api/auth/departments') // Using the new public route
+        .then(res => res.json())
+        .then(data => {
+            const select = document.getElementById('deptSelect');
+            if(Array.isArray(data)) {
+                data.forEach(dept => {
+                    const option = document.createElement('option');
+                    option.value = dept.department_id;
+                    option.textContent = dept.department_name;
+                    select.appendChild(option);
+                });
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Use FormData to handle file upload
+            const formData = new FormData(e.target);
+            
+            fetch('/api/auth/register', {
+                method: 'POST',
+                body: formData // Fetch will set Content-Type automatically
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    alert('ลงทะเบียนสำเร็จ! รหัสนักศึกษาของคุณคือ: ' + data.student_code);
+                    window.location.href = 'index.html';
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + data.error);
+                }
+            })
+            .catch(err => alert('เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว'));
+        });
+
+
+    </script>
+</body>
+</html>
