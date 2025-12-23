@@ -1,30 +1,36 @@
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
-const path = require('path');
+require('dotenv').config();
 
-const dbPath = path.resolve(__dirname, 'database', 'student_info.db');
+const isProduction = process.env.NODE_ENV === 'production';
 
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Error opening database ' + dbPath + ': ' + err.message);
-    } else {
-        console.log('Connected to the SQLite database.');
-        initDb();
-    }
+// Use DATABASE_URL from environment (Vercel provides this)
+// Fallback for local dev if not provided (though you should provide it to test)
+const connectionString = process.env.DATABASE_URL;
+
+const pool = new Pool({
+    connectionString: connectionString,
+    ssl: isProduction ? { rejectUnauthorized: false } : false
 });
 
-function initDb() {
-    db.serialize(() => {
+// Helper for running queries
+const query = (text, params) => pool.query(text, params);
+
+// Initialize Database Tables
+const initDb = async () => {
+    try {
+        console.log('Checking database connection & schema...');
+        
         // Departments Table
-        db.run(`CREATE TABLE IF NOT EXISTS departments (
-            department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await query(`CREATE TABLE IF NOT EXISTS departments (
+            department_id SERIAL PRIMARY KEY,
             department_name TEXT NOT NULL,
             code TEXT NOT NULL
         )`);
 
         // Admin Users Table
-        db.run(`CREATE TABLE IF NOT EXISTS admin_users (
-            admin_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await query(`CREATE TABLE IF NOT EXISTS admin_users (
+            admin_id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
             email TEXT,
@@ -32,70 +38,99 @@ function initDb() {
         )`);
 
         // Students Table
-        db.run(`CREATE TABLE IF NOT EXISTS students (
-            student_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await query(`CREATE TABLE IF NOT EXISTS students (
+            student_id SERIAL PRIMARY KEY,
             prefix TEXT,
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
-            dob TEXT NOT NULL, -- Format: YYYY-MM-DD
+            dob TEXT NOT NULL, 
             phone TEXT,
             department_id INTEGER,
-            student_code TEXT UNIQUE, -- Custom Student ID (e.g. 68319090016)
-            password TEXT, -- Hashed DOB
-            level TEXT, -- e.g. ปวช.1
+            student_code TEXT UNIQUE,
+            password TEXT, 
+            level TEXT, 
+            blood_group TEXT,
+            student_image TEXT,
+            father_name TEXT,
+            mother_name TEXT,
+            parent_phone TEXT,
             FOREIGN KEY (department_id) REFERENCES departments (department_id)
         )`);
 
         // Announcements Table
-        db.run(`CREATE TABLE IF NOT EXISTS announcements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await query(`CREATE TABLE IF NOT EXISTS announcements (
+            id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
             content TEXT NOT NULL,
-            image TEXT, -- Path to image
+            image TEXT, 
             department_id INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (department_id) REFERENCES departments (department_id)
         )`);
 
-        // Seed Data
-        seedData();
-    });
-}
+        // Session Table for connect-pg-simple
+        await query(`CREATE TABLE IF NOT EXISTS "session" (
+            "sid" varchar NOT NULL COLLATE "default",
+            "sess" json NOT NULL,
+            "expire" timestamp(6) NOT NULL
+        ) WITH (OIDS=FALSE)`);
 
-function seedData() {
-    // Seed Departments
-    db.get("SELECT count(*) as count FROM departments", (err, row) => {
-        if (err) { return console.error(err.message); }
-        if (row.count === 0) {
+        await query(`ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE`);
+        await query(`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire")`);
+
+        console.log('Database schema verified.');
+        await seedData();
+        
+    } catch (err) {
+        // Ignore session table exists error
+        if (err.message && !err.message.includes('already exists')) {
+            console.error('Error initializing database:', err);
+        }
+    }
+};
+
+const seedData = async () => {
+    try {
+        // Seed Departments
+        const deptRes = await query("SELECT count(*) as count FROM departments");
+        if (parseInt(deptRes.rows[0].count) === 0) {
             console.log("Seeding Departments...");
-            const stmt = db.prepare("INSERT INTO departments (department_name, code) VALUES (?, ?)");
-            stmt.run("เทคโนโลยีคอมพิวเตอร์", "COM");
-            stmt.run("อิเล็กทรอนิกส์", "ELEC");
-            stmt.run("ช่างไฟฟ้ากำลัง", "POWER");
-            stmt.run("เทคโนโลยีสารสนเทศ", "IT");
-            stmt.run("ช่างโยธา", "CIVIL");
-            stmt.run("ช่างก่อสร้าง", "CONST");
-            stmt.run("ช่างเชื่อม", "WELD");
-            stmt.run("ช่างเมคคาทรอนิกส์", "MECHA");
-            stmt.run("ช่างยนต์", "AUTO");
-            stmt.finalize();
+            const depts = [
+                ["เทคโนโลยีคอมพิวเตอร์", "COM"],
+                ["อิเล็กทรอนิกส์", "ELEC"],
+                ["ช่างไฟฟ้ากำลัง", "POWER"],
+                ["เทคโนโลยีสารสนเทศ", "IT"],
+                ["ช่างโยธา", "CIVIL"],
+                ["ช่างก่อสร้าง", "CONST"],
+                ["ช่างเชื่อม", "WELD"],
+                ["ช่างเมคคาทรอนิกส์", "MECHA"],
+                ["ช่างยนต์", "AUTO"]
+            ];
+            
+            for (const [name, code] of depts) {
+                await query("INSERT INTO departments (department_name, code) VALUES ($1, $2)", [name, code]);
+            }
         }
-    });
 
-    // Seed Admin
-    db.get("SELECT count(*) as count FROM admin_users", (err, row) => {
-        if (err) { return console.error(err.message); }
-        if (row.count === 0) {
+        // Seed Admin
+        const adminRes = await query("SELECT count(*) as count FROM admin_users");
+        if (parseInt(adminRes.rows[0].count) === 0) {
             console.log("Seeding Admin...");
-            const password = 'admin'; // Default password
+            const password = 'admin'; 
             const saltRounds = 10;
-            bcrypt.hash(password, saltRounds, (err, hash) => {
-                if (err) { return console.error(err); }
-                db.run("INSERT INTO admin_users (username, password, email) VALUES (?, ?, ?)", 
-                    ['admin', hash, 'admin@example.com']);
-            });
+            const hash = await bcrypt.hash(password, saltRounds);
+            await query("INSERT INTO admin_users (username, password, email) VALUES ($1, $2, $3)", 
+                ['admin', hash, 'admin@example.com']);
         }
-    });
-}
+    } catch (err) {
+        console.error('Error seeding data:', err);
+    }
+};
 
-module.exports = db;
+// Run init on start
+initDb();
+
+module.exports = {
+    query,
+    pool
+};

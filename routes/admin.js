@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../database');
+const bcrypt = require('bcrypt');
 
 const uploadDir = 'd:/studentinfoweb/uploads';
 if (!fs.existsSync(uploadDir)){
@@ -13,47 +14,13 @@ if (!fs.existsSync(uploadDir)){
 // Configure Multer for Admin Uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, uploadDir); // Use absolute path
+        cb(null, uploadDir); 
     },
     filename: (req, file, cb) => {
         cb(null, Date.now() + path.extname(file.originalname));
     }
 });
 const upload = multer({ storage: storage });
-
-// ... existing code ...
-
-// Create Student (Admin)
-// ...
-
-// Upload/Update Student Image (Admin Only)
-router.post('/students/:id/upload-image', upload.single('student_image'), (req, res) => {
-    const studentId = req.params.id;
-    const student_image = req.file ? `/uploads/${req.file.filename}` : null;
-
-    if (!student_image) {
-        return res.status(400).json({ error: 'กรุณาเลือกไฟล์รูปภาพ' });
-    }
-
-    // Get old image to delete
-    db.get("SELECT student_image FROM students WHERE student_id = ?", [studentId], (err, row) => {
-        if (!err && row && row.student_image) {
-            // Try to delete old file
-            const oldPath = path.join(__dirname, '..', row.student_image);
-            if (fs.existsSync(oldPath)) {
-                fs.unlink(oldPath, () => {});
-            }
-        }
-    });
-
-    const stmt = db.prepare("UPDATE students SET student_image = ? WHERE student_id = ?");
-    stmt.run(student_image, studentId, function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true, message: 'อัปเดตบรูปภาพสำเร็จ', imagePath: student_image });
-    });
-    stmt.finalize();
-});
-const bcrypt = require('bcrypt');
 
 // Middleware to check if user is admin
 function isAdmin(req, res, next) {
@@ -68,86 +35,96 @@ router.use(isAdmin);
 // --- Students Management ---
 
 // Get All Students
-router.get('/students', (req, res) => {
+router.get('/students', async (req, res) => {
     const query = `
         SELECT s.*, d.department_name 
         FROM students s 
         LEFT JOIN departments d ON s.department_id = d.department_id
         ORDER BY s.student_id DESC`;
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+    try {
+        const result = await db.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Get Single Student by ID
-router.get('/students/:id', (req, res) => {
+router.get('/students/:id', async (req, res) => {
     const { id } = req.params;
     const query = `
         SELECT s.*, d.department_name 
         FROM students s 
         LEFT JOIN departments d ON s.department_id = d.department_id 
-        WHERE s.student_id = ?`;
-    db.get(query, [id], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
+        WHERE s.student_id = $1`;
+    try {
+        const result = await db.query(query, [id]);
+        const row = result.rows[0];
         if (!row) return res.status(404).json({ error: 'Student not found' });
         res.json(row);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Delete Student
-router.delete('/students/:id', (req, res) => {
+router.delete('/students/:id', async (req, res) => {
     const { id } = req.params;
-    db.run("DELETE FROM students WHERE student_id = ?", [id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        await db.query("DELETE FROM students WHERE student_id = $1", [id]);
         res.json({ success: true });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Reset Student Password (to DOB)
-router.post('/students/:id/reset-password', (req, res) => {
+router.post('/students/:id/reset-password', async (req, res) => {
     const { id } = req.params;
     
-    // First retrieve DOB
-    db.get("SELECT dob FROM students WHERE student_id = ?", [id], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        // First retrieve DOB
+        const result = await db.query("SELECT dob FROM students WHERE student_id = $1", [id]);
+        const row = result.rows[0];
+        
         if (!row) return res.status(404).json({ error: 'Student not found' });
         
         const passwordRaw = row.dob.split('-').reverse().join('');
         const saltRounds = 10;
         
-        bcrypt.hash(passwordRaw, saltRounds, (err, hash) => {
-            if (err) return res.status(500).json({ error: err.message });
-            
-            db.run("UPDATE students SET password = ? WHERE student_id = ?", [hash, id], function(err) {
-                 if (err) return res.status(500).json({ error: err.message });
-                 res.json({ success: true, message: 'Password reset to DOB (DDMMYYYY)' });
-            });
-        });
-    });
+        const hash = await bcrypt.hash(passwordRaw, saltRounds);
+        await db.query("UPDATE students SET password = $1 WHERE student_id = $2", [hash, id]);
+        
+        res.json({ success: true, message: 'Password reset to DOB (DDMMYYYY)' });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Update Student Details
-router.put('/students/:id', (req, res) => {
+router.put('/students/:id', async (req, res) => {
     const { id } = req.params;
     const { prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone } = req.body;
 
     const query = `
         UPDATE students 
-        SET prefix = ?, first_name = ?, last_name = ?, level = ?, department_id = ?, dob = ?, 
-            blood_group = ?, phone = ?, father_name = ?, mother_name = ?, parent_phone = ?
-        WHERE student_id = ?`;
+        SET prefix = $1, first_name = $2, last_name = $3, level = $4, department_id = $5, dob = $6, 
+            blood_group = $7, phone = $8, father_name = $9, mother_name = $10, parent_phone = $11
+        WHERE student_id = $12`;
         
     const params = [prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone, id];
 
-    db.run(query, params, function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        await db.query(query, params);
         res.json({ success: true, message: 'อัปเดตข้อมูลสำเร็จ' });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Change Student Password (Custom)
-router.post('/students/:id/change-password', (req, res) => {
+router.post('/students/:id/change-password', async (req, res) => {
     const { id } = req.params;
     const { newPassword } = req.body;
     
@@ -156,110 +133,150 @@ router.post('/students/:id/change-password', (req, res) => {
     }
 
     const saltRounds = 10;
-    bcrypt.hash(newPassword, saltRounds, (err, hash) => {
-        if (err) return res.status(500).json({ error: err.message });
-        
-        db.run("UPDATE students SET password = ? WHERE student_id = ?", [hash, id], function(err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ success: true, message: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' });
-        });
-    });
+    try {
+        const hash = await bcrypt.hash(newPassword, saltRounds);
+        await db.query("UPDATE students SET password = $1 WHERE student_id = $2", [hash, id]);
+        res.json({ success: true, message: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Upload/Update Student Image (Admin Only)
+router.post('/students/:id/upload-image', upload.single('student_image'), async (req, res) => {
+    const studentId = req.params.id;
+    const student_image = req.file ? `/uploads/${req.file.filename}` : null;
+
+    if (!student_image) {
+        return res.status(400).json({ error: 'กรุณาเลือกไฟล์รูปภาพ' });
+    }
+
+    try {
+        // Get old image to delete
+        const result = await db.query("SELECT student_image FROM students WHERE student_id = $1", [studentId]);
+        const row = result.rows[0];
+
+        if (row && row.student_image) {
+            // Try to delete old file
+            const oldPath = path.join(__dirname, '..', row.student_image);
+            if (fs.existsSync(oldPath)) {
+                fs.unlink(oldPath, () => {});
+            }
+        }
+
+        await db.query("UPDATE students SET student_image = $1 WHERE student_id = $2", [student_image, studentId]);
+        res.json({ success: true, message: 'อัปเดตบรูปภาพสำเร็จ', imagePath: student_image });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // --- Departments Management ---
 
 // Get Departments
-router.get('/departments', (req, res) => {
-    db.all("SELECT * FROM departments", [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+router.get('/departments', async (req, res) => {
+    try {
+        const result = await db.query("SELECT * FROM departments");
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Add Department
-router.post('/departments', (req, res) => {
+router.post('/departments', async (req, res) => {
     const { name, code } = req.body;
-    db.run("INSERT INTO departments (department_name, code) VALUES (?, ?)", [name, code], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true, id: this.lastID });
-    });
+    try {
+        // Postgres returns insert id via RETURNING
+        const result = await db.query("INSERT INTO departments (department_name, code) VALUES ($1, $2) RETURNING department_id", [name, code]);
+        res.json({ success: true, id: result.rows[0].department_id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Delete Department
-router.delete('/departments/:id', (req, res) => {
+router.delete('/departments/:id', async (req, res) => {
     const { id } = req.params;
-    db.run("DELETE FROM departments WHERE department_id = ?", [id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        await db.query("DELETE FROM departments WHERE department_id = $1", [id]);
         res.json({ success: true });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // --- Announcements Management ---
-// Multer config moved to top
 
 // Post Announcement (with Image)
-router.post('/announcements', upload.single('image'), (req, res) => {
+router.post('/announcements', upload.single('image'), async (req, res) => {
     const { title, content, department_id } = req.body;
     const imagePath = req.file ? '/uploads/' + req.file.filename : null;
     
     // Convert empty string to null for general announcements
     const deptId = (department_id === '' || department_id === 'null' || !department_id) ? null : department_id;
 
-    db.run("INSERT INTO announcements (title, content, image, department_id) VALUES (?, ?, ?, ?)", 
-        [title, content, imagePath, deptId], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        await db.query("INSERT INTO announcements (title, content, image, department_id) VALUES ($1, $2, $3, $4)", 
+            [title, content, imagePath, deptId]);
         res.json({ success: true });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Get Announcements (Filter by Dept or All)
-router.get('/announcements', (req, res) => {
+router.get('/announcements', async (req, res) => {
     const { department_id } = req.query;
     let query = "SELECT a.*, d.department_name FROM announcements a LEFT JOIN departments d ON a.department_id = d.department_id ORDER BY created_at DESC";
     let params = [];
     
     if (department_id) {
-        query = "SELECT a.*, d.department_name FROM announcements a LEFT JOIN departments d ON a.department_id = d.department_id WHERE a.department_id = ? ORDER BY created_at DESC";
+        query = "SELECT a.*, d.department_name FROM announcements a LEFT JOIN departments d ON a.department_id = d.department_id WHERE a.department_id = $1 ORDER BY created_at DESC";
         params = [department_id];
     }
     
-    db.all(query, params, (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+    try {
+        const result = await db.query(query, params);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Delete Announcement
-router.delete('/announcements/:id', (req, res) => {
+router.delete('/announcements/:id', async (req, res) => {
     const { id } = req.params;
-    db.run("DELETE FROM announcements WHERE id = ?", [id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        await db.query("DELETE FROM announcements WHERE id = $1", [id]);
         res.json({ success: true });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Dashboard Stats
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
     const stats = {};
-    db.get("SELECT count(*) as count FROM students", (err, row) => {
-        if (err) return res.status(500).json({ error: err });
-        stats.students = row.count;
+    try {
+        const studentRes = await db.query("SELECT count(*) as count FROM students");
+        stats.students = studentRes.rows[0].count;
         
-        db.get("SELECT count(*) as count FROM departments", (err, row) => {
-            if (err) return res.status(500).json({ error: err });
-            stats.departments = row.count;
+        const deptRes = await db.query("SELECT count(*) as count FROM departments");
+        stats.departments = deptRes.rows[0].count;
 
-            // Breakdown by Department
-            db.all(`SELECT d.department_name, count(s.student_id) as count 
-                    FROM departments d 
-                    LEFT JOIN students s ON d.department_id = s.department_id 
-                    GROUP BY d.department_id`, (err, rows) => {
-                if (err) return res.status(500).json({ error: err });
-                stats.breakdown = rows;
-                res.json(stats);
-            });
-        });
-    });
+        // Breakdown by Department
+        const breakdown = await db.query(`
+            SELECT d.department_name, count(s.student_id) as count 
+            FROM departments d 
+            LEFT JOIN students s ON d.department_id = s.department_id 
+            GROUP BY d.department_id, d.department_name
+        `);
+        stats.breakdown = breakdown.rows;
+        res.json(stats);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 module.exports = router;

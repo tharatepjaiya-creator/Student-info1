@@ -11,31 +11,37 @@ function isAuthenticated(req, res, next) {
 }
 
 // Get Student Info
-router.get('/info', isAuthenticated, (req, res) => {
+router.get('/info', isAuthenticated, async (req, res) => {
     const studentId = req.session.userId;
     const query = `
         SELECT s.*, d.department_name, d.code as dept_code 
         FROM students s 
         LEFT JOIN departments d ON s.department_id = d.department_id 
-        WHERE s.student_id = ?`;
+        WHERE s.student_id = $1`;
         
-    db.get(query, [studentId], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        const result = await db.query(query, [studentId]);
+        const row = result.rows[0];
+
         if (!row) return res.status(404).json({ error: 'Student not found' });
         
         // Remove password from response
         delete row.password; 
         res.json(row);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Get Announcements for Student's Department
-router.get('/announcements', isAuthenticated, (req, res) => {
+router.get('/announcements', isAuthenticated, async (req, res) => {
     const studentId = req.session.userId;
     
-    // First get student's department_id
-    db.get("SELECT department_id FROM students WHERE student_id = ?", [studentId], (err, student) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        // First get student's department_id
+        const studentRes = await db.query("SELECT department_id FROM students WHERE student_id = $1", [studentId]);
+        const student = studentRes.rows[0];
+        
         if (!student) return res.status(404).json({ error: 'Student not found' });
 
         const deptId = student.department_id;
@@ -44,14 +50,15 @@ router.get('/announcements', isAuthenticated, (req, res) => {
             SELECT a.*, d.department_name 
             FROM announcements a 
             LEFT JOIN departments d ON a.department_id = d.department_id 
-            WHERE a.department_id = ? OR a.department_id IS NULL
+            WHERE a.department_id = $1 OR a.department_id IS NULL
             ORDER BY created_at DESC`;
             
-        db.all(query, [deptId], (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(rows);
-        });
-    });
+        const result = await db.query(query, [deptId]);
+        res.json(result.rows);
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 module.exports = router;

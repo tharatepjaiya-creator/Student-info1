@@ -14,7 +14,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Session Setup
+const pgSession = require('connect-pg-simple')(session);
+
+// Session Setup
 app.use(session({
+    store: new pgSession({
+        pool : db.pool,                // Connection pool
+        tableName : 'session'   // Use session table
+    }),
     secret: 'student_info_secret_key', // Change this in production
     resave: false,
     saveUninitialized: false,

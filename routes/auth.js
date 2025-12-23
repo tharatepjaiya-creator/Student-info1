@@ -17,34 +17,38 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Get Departments (Public for Registration)
-router.get('/departments', (req, res) => {
-    db.all("SELECT * FROM departments", [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+router.get('/departments', async (req, res) => {
+    try {
+        const result = await db.query("SELECT * FROM departments");
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Public Stats (For Landing Page)
-router.get('/public-stats', (req, res) => {
+router.get('/public-stats', async (req, res) => {
     const stats = {};
-    db.get("SELECT count(*) as count FROM students", (err, row) => {
-        if (err) return res.status(500).json({ error: err });
-        stats.students = row.count;
+    try {
+        const studentCount = await db.query("SELECT count(*) as count FROM students");
+        stats.students = studentCount.rows[0].count;
         
         // Breakdown by Department
-        db.all(`SELECT d.department_name, count(s.student_id) as count 
-                FROM departments d 
-                LEFT JOIN students s ON d.department_id = s.department_id 
-                GROUP BY d.department_id`, (err, rows) => {
-            if (err) return res.status(500).json({ error: err });
-            stats.breakdown = rows;
-            res.json(stats);
-        });
-    });
+        const breakdown = await db.query(`
+            SELECT d.department_name, count(s.student_id) as count 
+            FROM departments d 
+            LEFT JOIN students s ON d.department_id = s.department_id 
+            GROUP BY d.department_id, d.department_name
+        `);
+        stats.breakdown = breakdown.rows;
+        res.json(stats);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Register Student
-router.post('/register', upload.single('student_image'), (req, res) => {
+router.post('/register', upload.single('student_image'), async (req, res) => {
     const { prefix, first_name, last_name, dob, phone, department_id, student_code, level, blood_group, father_name, mother_name, parent_phone } = req.body;
     const student_image = req.file ? `/uploads/${req.file.filename}` : null;
     
@@ -58,35 +62,36 @@ router.post('/register', upload.single('student_image'), (req, res) => {
     const passwordRaw = `${day}/${month}/${beYear}`;
 
     const saltRounds = 10;
-    bcrypt.hash(passwordRaw, saltRounds, (err, hash) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        const hash = await bcrypt.hash(passwordRaw, saltRounds);
         
-        const stmt = db.prepare("INSERT INTO students (prefix, first_name, last_name, dob, phone, department_id, student_code, password, level, blood_group, student_image, father_name, mother_name, parent_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        stmt.run(prefix, first_name, last_name, dob, phone, department_id, student_code, hash, level, blood_group, student_image, father_name, mother_name, parent_phone, function(err) {
-            if (err) {
-                if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'รหัสนักศึกษานี้มีอยู่ในระบบแล้ว' });
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ success: true, message: 'ลงทะเบียนสำเร็จ', student_code: student_code });
-        });
-        stmt.finalize();
-    });
+        const query = `
+            INSERT INTO students (prefix, first_name, last_name, dob, phone, department_id, student_code, password, level, blood_group, student_image, father_name, mother_name, parent_phone) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            RETURNING student_code
+        `;
+        const values = [prefix, first_name, last_name, dob, phone, department_id, student_code, hash, level, blood_group, student_image, father_name, mother_name, parent_phone];
+        
+        await db.query(query, values);
+        res.json({ success: true, message: 'ลงทะเบียนสำเร็จ', student_code: student_code });
+
+    } catch (err) {
+        if (err.message.includes('unique constraint') || err.message.includes('UNIQUE')) {
+            return res.status(400).json({ error: 'รหัสนักศึกษานี้มีอยู่ในระบบแล้ว' });
+        }
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Student Login
-router.post('/login/student', (req, res) => {
+router.post('/login/student', async (req, res) => {
     let { student_code, password } = req.body;
     
     // Normalize Input Password to DD/MM/YYYY
-    // Ex: 1/1/2550 -> 01/01/2550
-    // Ex: 01012550 -> 01/01/2550
     console.log(`Login attempt for: ${student_code}, Raw Pwd: ${password}`);
 
     if (password) {
-        // Remove non-numeric except slash
         let cleanPwd = password.replace(/[^0-9\/]/g, '');
-        
-        // If has slashes, normalize padding
         if (cleanPwd.includes('/')) {
             const parts = cleanPwd.split('/');
             if (parts.length === 3) {
@@ -96,54 +101,58 @@ router.post('/login/student', (req, res) => {
                 cleanPwd = `${d}/${m}/${y}`;
             }
         } else if (cleanPwd.length === 8) {
-            // If just numbers (01012550), add slashes
             const d = cleanPwd.substring(0, 2);
             const m = cleanPwd.substring(2, 4);
             const y = cleanPwd.substring(4, 8);
             cleanPwd = `${d}/${m}/${y}`;
         }
-        
         password = cleanPwd;
     }
     console.log(`Normalized Pwd: ${password}`);
     
-    db.get("SELECT * FROM students WHERE student_code = ?", [student_code], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        const result = await db.query("SELECT * FROM students WHERE student_code = $1", [student_code]);
+        const row = result.rows[0];
+
         if (!row) return res.status(401).json({ error: 'ไม่พบข้อมูลนักศึกษา' }); // User not found
         
-        bcrypt.compare(password, row.password, (err, result) => {
-            if (result) {
-                req.session.userId = row.student_id;
-                req.session.role = 'student';
-                req.session.userName = row.first_name + ' ' + row.last_name;
-                req.session.studentCode = row.student_code;
-                return res.json({ success: true, redirect: '/student_dashboard.html' });
-            } else {
-                return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง (วันเกิด DDMMYYYY)' }); // Invalid password
-            }
-        });
-    });
+        const match = await bcrypt.compare(password, row.password);
+        if (match) {
+            req.session.userId = row.student_id;
+            req.session.role = 'student';
+            req.session.userName = row.first_name + ' ' + row.last_name;
+            req.session.studentCode = row.student_code;
+            return res.json({ success: true, redirect: '/student_dashboard.html' });
+        } else {
+            return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง (วันเกิด DDMMYYYY)' }); // Invalid password
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Admin Login
-router.post('/login/admin', (req, res) => {
+router.post('/login/admin', async (req, res) => {
     const { username, password } = req.body;
     
-    db.get("SELECT * FROM admin_users WHERE username = ?", [username], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        const result = await db.query("SELECT * FROM admin_users WHERE username = $1", [username]);
+        const row = result.rows[0];
+
         if (!row) return res.status(401).json({ error: 'ไม่พบผู้ดูแลระบบ' });
         
-        bcrypt.compare(password, row.password, (err, result) => {
-            if (result) {
-                req.session.userId = row.admin_id;
-                req.session.role = 'admin';
-                req.session.userName = row.username;
-                return res.json({ success: true, redirect: '/admin_dashboard.html' });
-            } else {
-                return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง' });
-            }
-        });
-    });
+        const match = await bcrypt.compare(password, row.password);
+        if (match) {
+            req.session.userId = row.admin_id;
+            req.session.role = 'admin';
+            req.session.userName = row.username;
+            return res.json({ success: true, redirect: '/admin_dashboard.html' });
+        } else {
+            return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Logout
