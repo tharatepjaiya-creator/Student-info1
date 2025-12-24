@@ -98,25 +98,29 @@ const initDb = async () => {
 
 const seedData = async () => {
     try {
-        // Seed Departments
-        const deptRes = await query("SELECT count(*) as count FROM departments");
-        if (parseInt(deptRes.rows[0].count) === 0) {
-            console.log("Seeding Departments...");
-            const depts = [
-                ["เทคโนโลยีคอมพิวเตอร์", "COM"],
-                ["อิเล็กทรอนิกส์", "ELEC"],
-                ["ช่างไฟฟ้ากำลัง", "POWER"],
-                ["เทคโนโลยีสารสนเทศ", "IT"],
-                ["ช่างโยธา", "CIVIL"],
-                ["ช่างก่อสร้าง", "CONST"],
-                ["ช่างเชื่อม", "WELD"],
-                ["ช่างเมคคาทรอนิกส์", "MECHA"],
-                ["ช่างยนต์", "AUTO"]
-            ];
-            
-            for (const [name, code] of depts) {
-                await query("INSERT INTO departments (department_name, code) VALUES ($1, $2)", [name, code]);
-            }
+        console.log("Seeding Departments...");
+        const depts = [
+            ["เทคโนโลยีคอมพิวเตอร์", "COM"],
+            ["อิเล็กทรอนิกส์", "ELEC"],
+            ["ช่างไฟฟ้ากำลัง", "POWER"],
+            ["เทคโนโลยีสารสนเทศ", "IT"],
+            ["ช่างโยธา", "CIVIL"],
+            ["ช่างก่อสร้าง", "CONST"],
+            ["ช่างเชื่อม", "WELD"],
+            ["ช่างเมคคาทรอนิกส์", "MECHA"],
+            ["ช่างยนต์", "AUTO"],
+            ["ช่างเครื่องกลโรงงาน", "MECHANIC"]
+        ];
+        
+        for (const [name, code] of depts) {
+            // Insert if not exists
+            await query(`
+                INSERT INTO departments (department_name, code) 
+                SELECT $1, $2 
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM departments WHERE department_name = $1
+                )
+            `, [name, code]);
         }
 
         // Seed Admin
