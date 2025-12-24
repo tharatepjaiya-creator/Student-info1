@@ -141,19 +141,40 @@
             const ctx = document.getElementById('studentChart').getContext('2d');
             const labels = data.map(d => d.department_name);
             const counts = data.map(d => d.count);
-            // Dynamic Colors
-            const colors = [
-                '#FFFFFF', '#36A2EB', '#FFCE56', '#4BC0C0', '#CECECE', '#FF9F40', 
-                '#71B37C', '#7B3B8D', '#E4080A', '#000000'
+            
+            // Department Color Mapping
+            const deptColors = {
+                "เทคโนโลยีคอมพิวเตอร์": "#FFFFFF",   // white
+                "อิเล็กทรอนิกส์": "#04F0F9",        // Light Blue
+                "ช่างไฟฟ้ากำลัง": "#FFDE59",        // Yellow
+                "เทคโนโลยีสารสนเทศ": "#CECECE",    // Gray
+                "ช่างโยธา": "#E8E8E8",             // light gray
+                "ช่างก่อสร้าง": "#8D6F64",          // Brown
+                "ช่างเชื่อม": "#50873B",           // Green
+                "ช่างเมคคาทรอนิกส์": "#964CAB",     // Drak purple
+                "ช่างยานยนต์": "#E7E9ED",              // red
+                "ช่างเครื่องกลโรงงาน": "#D20103"     // dark red
+            };
+            
+            // Fallback color generator
+            const defaultColors = [
+                '#4DC9F6', '#F67019', '#F53794', '#537BC4', '#ACC236', '#166A8F', '#00A950', '#58595B', '#8549BA'
             ];
 
+            // Map data to colors based on department name
+            const backgroundColors = data.map((d, i) => {
+                return deptColors[d.department_name] || defaultColors[i % defaultColors.length];
+            });
+
             // Render Legend
-            const legendHtml = data.map((d, i) => `
+            const legendHtml = data.map((d, i) => {
+                const color = deptColors[d.department_name] || defaultColors[i % defaultColors.length];
+                return `
                 <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center">
-                    <span><span style="display:inline-block;width:12px;height:12px;background-color:${colors[i % colors.length]};margin-right:8px;border-radius:50%;"></span>${d.department_name}</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;background-color:${color};margin-right:8px;border-radius:50%;"></span>${d.department_name}</span>
                     <span class="badge bg-light text-dark rounded-pill">${d.count}</span>
                 </li>
-            `).join('');
+            `}).join('');
             document.getElementById('chartLegend').innerHTML = legendHtml;
 
             if (studentChartInstance) {
@@ -166,7 +187,7 @@
                     labels: labels,
                     datasets: [{
                         data: counts,
-                        backgroundColor: colors,
+                        backgroundColor: backgroundColors,
                         borderColor: '#000000',
                         borderWidth: 2,
                         hoverOffset: 4
