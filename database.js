@@ -98,7 +98,7 @@ const initDb = async () => {
 
 const seedData = async () => {
     try {
-        console.log("Seeding Departments...");
+        console.log("🌱 Starting department seeding...");
         const depts = [
             ["เทคโนโลยีคอมพิวเตอร์", "COM"],
             ["อิเล็กทรอนิกส์", "ELEC"],
@@ -112,29 +112,44 @@ const seedData = async () => {
             ["ช่างเครื่องกลโรงงาน", "MECHANIC"]
         ];
         
+        let addedCount = 0;
         for (const [name, code] of depts) {
-            // Insert if not exists
-            await query(`
-                INSERT INTO departments (department_name, code) 
-                SELECT $1, $2 
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM departments WHERE department_name = $1
-                )
-            `, [name, code]);
+            try {
+                // Insert if not exists
+                const result = await query(`
+                    INSERT INTO departments (department_name, code) 
+                    SELECT $1, $2 
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM departments WHERE department_name = $1
+                    )
+                    RETURNING department_id
+                `, [name, code]);
+                
+                if (result.rows.length > 0) {
+                    console.log(`✅ Added department: ${name}`);
+                    addedCount++;
+                }
+            } catch (deptErr) {
+                console.error(`❌ Failed to add department ${name}:`, deptErr.message);
+            }
         }
+        
+        console.log(`🌱 Department seeding complete. Added ${addedCount} new departments.`);
 
         // Seed Admin
         const adminRes = await query("SELECT count(*) as count FROM admin_users");
         if (parseInt(adminRes.rows[0].count) === 0) {
-            console.log("Seeding Admin...");
+            console.log("👤 Seeding Admin...");
             const password = 'admin'; 
             const saltRounds = 10;
             const hash = await bcrypt.hash(password, saltRounds);
             await query("INSERT INTO admin_users (username, password, email) VALUES ($1, $2, $3)", 
                 ['admin', hash, 'admin@example.com']);
+            console.log("✅ Admin user created");
         }
     } catch (err) {
-        console.error('Error seeding data:', err);
+        console.error('❌ CRITICAL: Error seeding data:', err.message);
+        console.error('Stack:', err.stack);
     }
 };
 

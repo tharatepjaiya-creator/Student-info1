@@ -287,4 +287,42 @@ router.get('/stats', async (req, res) => {
     }
 });
 
+// Force Seed Departments (Temporary Fix)
+router.post('/force-seed-departments', async (req, res) => {
+    try {
+        const depts = [
+            ["เทคโนโลยีคอมพิวเตอร์", "COM"],
+            ["อิเล็กทรอนิกส์", "ELEC"],
+            ["ช่างไฟฟ้ากำลัง", "POWER"],
+            ["เทคโนโลยีสารสนเทศ", "IT"],
+            ["ช่างโยธา", "CIVIL"],
+            ["ช่างก่อสร้าง", "CONST"],
+            ["ช่างเชื่อม", "WELD"],
+            ["ช่างเมคคาทรอนิกส์", "MECHA"],
+            ["ช่างยนต์", "AUTO"],
+            ["ช่างเครื่องกลโรงงาน", "MECHANIC"]
+        ];
+        
+        let added = 0;
+        for (const [name, code] of depts) {
+            const result = await db.query(`
+                INSERT INTO departments (department_name, code) 
+                SELECT $1, $2 
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM departments WHERE department_name = $1
+                )
+                RETURNING department_id
+            `, [name, code]);
+            
+            if (result.rows.length > 0) {
+                added++;
+            }
+        }
+        
+        res.json({ success: true, message: `Added ${added} new departments`, total: depts.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message, stack: err.stack });
+    }
+});
+
 module.exports = router;
