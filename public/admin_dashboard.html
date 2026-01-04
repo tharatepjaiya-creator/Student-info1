@@ -16,7 +16,12 @@
     <nav class="navbar navbar-expand-lg glass-nav mb-4">
         <div class="container">
             <a class="navbar-brand fw-bold" href="#">Admin Dashboard</a>
-            <button class="btn btn-outline-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-warning" onclick="renameDepartment()" title="เปลี่ยนชื่อแผนก ช่างเครื่องกลโรงงาน -> ช่างกลโรงงาน">
+                    <i class="bi bi-pencil-square"></i> เปลี่ยนชื่อแผนก
+                </button>
+                <button class="btn btn-outline-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            </div>
         </div>
     </nav>
 
@@ -290,6 +295,32 @@
 
         function handleLogout() {
             fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.href = 'index.html');
+        }
+
+        async function renameDepartment() {
+            if (!confirm('คุณต้องการเปลี่ยนชื่อแผนกจาก "ช่างเครื่องกลโรงงาน" เป็น "ช่างกลโรงงาน" ใช่หรือไม่?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/rename-department', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    // Reload departments and students to reflect changes
+                    loadDepartments();
+                    loadStudents();
+                } else {
+                    alert('❌ เกิดข้อผิดพลาด: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message);
+            }
         }
 
         // Fetch Stats
