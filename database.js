@@ -109,7 +109,7 @@ const seedData = async () => {
             ["ช่างเชื่อม", "WELD"],
             ["ช่างเมคคาทรอนิกส์", "MECHA"],
             ["ช่างยนต์", "AUTO"],
-            ["ช่างเครื่องกลโรงงาน", "MECHANIC"]
+            ["ช่างกลโรงงาน", "MECHANIC"]
         ];
         
         let addedCount = 0;

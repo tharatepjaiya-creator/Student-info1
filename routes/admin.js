@@ -300,7 +300,7 @@ router.post('/force-seed-departments', async (req, res) => {
             ["ช่างเชื่อม", "WELD"],
             ["ช่างเมคคาทรอนิกส์", "MECHA"],
             ["ช่างยนต์", "AUTO"],
-            ["ช่างเครื่องกลโรงงาน", "MECHANIC"]
+            ["ช่างกลโรงงาน", "MECHANIC"]
         ];
         
         let added = 0;

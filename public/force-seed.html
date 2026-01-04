@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Force Seed Departments</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
 <body>
     <div class="container mt-5">
         <div class="card">
@@ -14,14 +16,14 @@
             </div>
             <div class="card-body">
                 <p class="text-muted">Use this page to manually add missing departments to the database.</p>
-                <p class="fw-bold">This will add "ช่างเครื่องกลโรงงาน" and any other missing departments.</p>
-                
+                <p class="fw-bold">This will add "ช่างกลโรงงาน" and any other missing departments.</p>
+
                 <button id="seedBtn" class="btn btn-primary btn-lg">
                     <i class="bi bi-arrow-repeat"></i> Force Seed Departments
                 </button>
-                
+
                 <div id="result" class="mt-3"></div>
-                
+
                 <hr>
                 <a href="admin_dashboard.html" class="btn btn-secondary">← Back to Dashboard</a>
             </div>
@@ -32,19 +34,19 @@
         document.getElementById('seedBtn').addEventListener('click', async () => {
             const btn = document.getElementById('seedBtn');
             const result = document.getElementById('result');
-            
+
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
             result.innerHTML = '';
-            
+
             try {
                 const response = await fetch('/api/admin/force-seed-departments', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     result.innerHTML = `
                         <div class="alert alert-success">
@@ -76,4 +78,5 @@
         });
     </script>
 </body>
+
 </html>
