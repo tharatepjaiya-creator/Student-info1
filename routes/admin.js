@@ -325,4 +325,49 @@ router.post('/force-seed-departments', async (req, res) => {
     }
 });
 
+// Rename Department (ช่างเครื่องกลโรงงาน -> ช่างกลโรงงาน)
+router.post('/rename-department', async (req, res) => {
+    try {
+        console.log('🔄 Starting department rename...');
+        
+        // First, check if old department exists
+        const checkOld = await db.query(
+            "SELECT * FROM departments WHERE department_name = 'ช่างเครื่องกลโรงงาน'"
+        );
+        
+        if (checkOld.rows.length === 0) {
+            return res.json({ 
+                success: true, 
+                message: 'ไม่พบแผนก "ช่างเครื่องกลโรงงาน" ในฐานข้อมูล อาจได้รับการเปลี่ยนชื่อไปแล้ว',
+                alreadyUpdated: true
+            });
+        }
+        
+        // Update the department name
+        const result = await db.query(`
+            UPDATE departments 
+            SET department_name = 'ช่างกลโรงงาน'
+            WHERE department_name = 'ช่างเครื่องกลโรงงาน'
+            RETURNING department_id, department_name, code
+        `);
+        
+        if (result.rows.length > 0) {
+            console.log('✅ Department renamed successfully:', result.rows[0]);
+            res.json({ 
+                success: true, 
+                message: 'เปลี่ยนชื่อแผนกสำเร็จ จาก "ช่างเครื่องกลโรงงาน" เป็น "ช่างกลโรงงาน"',
+                department: result.rows[0]
+            });
+        } else {
+            res.json({ 
+                success: false, 
+                error: 'ไม่สามารถเปลี่ยนชื่อแผนกได้' 
+            });
+        }
+    } catch (err) {
+        console.error('❌ Error renaming department:', err);
+        res.status(500).json({ error: err.message, stack: err.stack });
+    }
+});
+
 module.exports = router;

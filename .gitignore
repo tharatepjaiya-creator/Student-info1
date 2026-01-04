@@ -5,3 +5,5 @@ uploads/
 .DS_Store
 *.tmp
 database/
+.vercel
+.env*.local
