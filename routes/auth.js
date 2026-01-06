@@ -1,33 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const db = require('../database');
 const bcrypt = require('bcryptjs');
-
-// Configure Multer for File Uploads
-const os = require('os');
-const isProduction = process.env.NODE_ENV === 'production';
-const uploadDir = isProduction ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, '../uploads');
-
-if (!fs.existsSync(uploadDir)){
-    try {
-        fs.mkdirSync(uploadDir, { recursive: true });
-    } catch (err) {
-        console.error('Failed to create upload directory:', err);
-    }
-}
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
-    }
-});
-const upload = multer({ storage: storage });
+const { upload } = require('./cloudinary');
 
 // Get Departments (Public for Registration)
 router.get('/departments', async (req, res) => {
@@ -63,7 +38,7 @@ router.get('/public-stats', async (req, res) => {
 // Register Student
 router.post('/register', upload.single('student_image'), async (req, res) => {
     const { prefix, first_name, last_name, dob, phone, department_id, student_code, level, blood_group, father_name, mother_name, parent_phone } = req.body;
-    const student_image = req.file ? `/uploads/${req.file.filename}` : null;
+    const student_image = req.file ? req.file.path : null; // Cloudinary URL
     
     if (!first_name || !last_name || !dob || !department_id || !student_code || !level) {
         return res.status(400).json({ error: 'กรุณากรอกข้อมูลหลักให้ครบถ้วน' });

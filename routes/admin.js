@@ -1,34 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const db = require('../database');
 const bcrypt = require('bcryptjs');
-const os = require('os');
-
-// Use /tmp on Vercel (read-only filesystem otherwise), or local uploads folder
-const isProduction = process.env.NODE_ENV === 'production';
-const uploadDir = isProduction ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, '../uploads');
-
-if (!fs.existsSync(uploadDir)){
-    try {
-        fs.mkdirSync(uploadDir, { recursive: true });
-    } catch (err) {
-        console.error('Failed to create upload directory:', err);
-    }
-}
-
-// Configure Multer for Admin Uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir); 
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
-const upload = multer({ storage: storage });
+const { upload } = require('./cloudinary');
 
 // Middleware to check if user is admin
 function isAdmin(req, res, next) {
@@ -153,25 +127,14 @@ router.post('/students/:id/change-password', async (req, res) => {
 // Upload/Update Student Image (Admin Only)
 router.post('/students/:id/upload-image', upload.single('student_image'), async (req, res) => {
     const studentId = req.params.id;
-    const student_image = req.file ? `/uploads/${req.file.filename}` : null;
+    const student_image = req.file ? req.file.path : null; // Cloudinary URL
 
     if (!student_image) {
         return res.status(400).json({ error: 'กรุณาเลือกไฟล์รูปภาพ' });
     }
 
     try {
-        // Get old image to delete
-        const result = await db.query("SELECT student_image FROM students WHERE student_id = $1", [studentId]);
-        const row = result.rows[0];
-
-        if (row && row.student_image) {
-            // Try to delete old file
-            const oldPath = path.join(__dirname, '..', row.student_image);
-            if (fs.existsSync(oldPath)) {
-                fs.unlink(oldPath, () => {});
-            }
-        }
-
+        // No need to delete old image from Cloudinary, it just gets replaced
         await db.query("UPDATE students SET student_image = $1 WHERE student_id = $2", [student_image, studentId]);
         res.json({ success: true, message: 'อัปเดตบรูปภาพสำเร็จ', imagePath: student_image });
     } catch (err) {
@@ -219,7 +182,7 @@ router.delete('/departments/:id', async (req, res) => {
 // Post Announcement (with Image)
 router.post('/announcements', upload.single('image'), async (req, res) => {
     const { title, content, department_id } = req.body;
-    const imagePath = req.file ? '/uploads/' + req.file.filename : null;
+    const imagePath = req.file ? req.file.path : null; // Cloudinary URL
     
     // Convert empty string to null for general announcements
     const deptId = (department_id === '' || department_id === 'null' || !department_id) ? null : department_id;
