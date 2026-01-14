@@ -1,43 +1,52 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เปลี่ยนชื่อแผนก</title>
+    <title>Rename Department</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
 </head>
-
 <body>
+    <!-- Wave Background -->
+    <div class="wave-container">
+        <svg class="wave-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path fill="#ffffff" d="M0,160 C360,260 720,60 1080,160 C1260,210 1350,180 1440,160 L1440,320 L0,320 Z"></path>
+        </svg>
+    </div>
+
     <div class="container mt-5">
         <div class="card">
-            <div class="card-header bg-warning text-dark">
-                <h3><i class="bi bi-pencil-square"></i> เปลี่ยนชื่อแผนก</h3>
+            <div class="card-header bg-warning">
+                <h3>✏️ Rename Department (Admin Only)</h3>
             </div>
             <div class="card-body">
-                <p class="text-muted">เปลี่ยนชื่อแผนกจาก <strong>"ช่างเครื่องกลโรงงาน"</strong> เป็น <strong>"ช่างกลโรงงาน"</strong></p>
-                <p class="fw-bold text-danger">⚠️ การดำเนินการนี้จะอัปเดตข้อมูลในฐานข้อมูล</p>
+                <p class="text-muted">This page will rename the department from:</p>
+                <p class="fw-bold">"ช่างเครื่องกลโรงงาน" → "ช่างกลโรงงาน"</p>
 
-                <button id="renameBtn" class="btn btn-warning btn-lg">
-                    <i class="bi bi-pencil"></i> เปลี่ยนชื่อแผนก
+                <button id="renameBtn" class="btn btn-primary btn-lg">
+                    Rename Department
                 </button>
 
                 <div id="result" class="mt-3"></div>
 
                 <hr>
-                <a href="admin_dashboard.html" class="btn btn-secondary">← กลับไปหน้าแดชบอร์ด</a>
+                <a href="admin_dashboard.html" class="btn btn-secondary">← Back to Dashboard</a>
             </div>
         </div>
     </div>
 
     <script>
         document.getElementById('renameBtn').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to rename "ช่างเครื่องกลโรงงาน" to "ช่างกลโรงงาน"?')) {
+                return;
+            }
+
             const btn = document.getElementById('renameBtn');
             const result = document.getElementById('result');
 
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังดำเนินการ...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
             result.innerHTML = '';
 
             try {
@@ -51,9 +60,8 @@
                 if (data.success) {
                     result.innerHTML = `
                         <div class="alert alert-success">
-                            <strong>✅ สำเร็จ!</strong><br>
-                            ${data.message}<br>
-                            ${data.department ? `<small>ID: ${data.department.department_id}, ชื่อใหม่: ${data.department.department_name}, รหัส: ${data.department.code}</small>` : ''}
+                            <strong>✅ Success!</strong><br>
+                            ${data.message}
                         </div>
                     `;
                     setTimeout(() => {
@@ -62,22 +70,21 @@
                 } else {
                     result.innerHTML = `
                         <div class="alert alert-danger">
-                            <strong>❌ ข้อผิดพลาด:</strong> ${data.error}
+                            <strong>❌ Error:</strong> ${data.error || 'Unknown error'}
                         </div>
                     `;
                 }
             } catch (err) {
                 result.innerHTML = `
                     <div class="alert alert-danger">
-                        <strong>❌ ข้อผิดพลาดเครือข่าย:</strong> ${err.message}
+                        <strong>❌ Network Error:</strong> ${err.message}
                     </div>
                 `;
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-pencil"></i> เปลี่ยนชื่อแผนก';
+                btn.innerHTML = 'Rename Department';
             }
         });
     </script>
 </body>
-
 </html>

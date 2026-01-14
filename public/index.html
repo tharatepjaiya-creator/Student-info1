@@ -12,6 +12,13 @@
 </head>
 <body>
 
+    <!-- Wave Background -->
+    <div class="wave-container">
+        <svg class="wave-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path fill="#ffffff" d="M0,160 C360,260 720,60 1080,160 C1260,210 1350,180 1440,160 L1440,320 L0,320 Z"></path>
+        </svg>
+    </div>
+
     <div class="bg-shape shape-1"></div>
     <div class="bg-shape shape-2"></div>
 
@@ -144,29 +151,26 @@
             
             // Department Color Mapping
             const deptColors = {
-                "เทคโนโลยีคอมพิวเตอร์": "#FFFFFF",   // white
-                "อิเล็กทรอนิกส์": "#04F0F9",        // Light Blue
-                "ช่างไฟฟ้ากำลัง": "#FFDE59",        // Yellow
-                "เทคโนโลยีสารสนเทศ": "#CECECE",    // Gray
-                "ช่างโยธา": "#E8E8E8",             // light gray
-                "ช่างก่อสร้าง": "#8D6F64",          // Brown
-                "ช่างเชื่อม": "#50873B",           // Green
-                "ช่างเมคคาทรอนิกส์": "#964CAB",     // Drak purple
-                "ช่างยนต์": "#E4080A",              // red
-                "ช่างกลโรงงาน": "#a40204"     // dark red
+                "เทคโนโลยีคอมพิวเตอร์": "#FFFFFF",
+                "อิเล็กทรอนิกส์": "#04F0F9",
+                "ช่างไฟฟ้ากำลัง": "#FFDE59",
+                "เทคโนโลยีสารสนเทศ": "#CECECE",
+                "ช่างโยธา": "#E8E8E8",
+                "ช่างก่อสร้าง": "#8D6F64",
+                "ช่างเชื่อม": "#50873B",
+                "ช่างเมคคาทรอนิกส์": "#964CAB",
+                "ช่างยนต์": "#E4080A",
+                "ช่างกลโรงงาน": "#a40204"
             };
             
-            // Fallback color generator
             const defaultColors = [
                 '#4DC9F6', '#F67019', '#F53794', '#537BC4', '#ACC236', '#166A8F', '#00A950', '#58595B', '#8549BA'
             ];
 
-            // Map data to colors based on department name
             const backgroundColors = data.map((d, i) => {
                 return deptColors[d.department_name] || defaultColors[i % defaultColors.length];
             });
 
-            // Render Legend
             const legendHtml = data.map((d, i) => {
                 const color = deptColors[d.department_name] || defaultColors[i % defaultColors.length];
                 return `
@@ -197,7 +201,7 @@
                     responsive: true,
                     plugins: {
                         legend: {
-                            display: false // We use custom legend
+                            display: false
                         }
                     }
                 }

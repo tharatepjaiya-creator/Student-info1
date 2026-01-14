@@ -9,6 +9,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Wave Background -->
+    <div class="wave-container">
+        <svg class="wave-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path fill="#ffffff" d="M0,160 C360,260 720,60 1080,160 C1260,210 1350,180 1440,160 L1440,320 L0,320 Z"></path>
+        </svg>
+    </div>
+
     <div class="bg-shape shape-1"></div>
     <div class="container mt-5">
         <div class="glass-container">
@@ -54,9 +61,7 @@
                         <label class="form-label">แผนกวิชา</label>
                         <select class="form-select" name="department_id" id="deptSelect" required>
                              <option selected disabled value="">เลือกแผนกวิชา</option>
-                
                             <!-- Populated by JS -->
-                        </select>
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
@@ -109,7 +114,7 @@
     <script src="js/main.js"></script>
     <script>
         // Fetch Departments
-        fetch('/api/auth/departments') // Using the new public route
+        fetch('/api/auth/departments')
         .then(res => res.json())
         .then(data => {
             const select = document.getElementById('deptSelect');
@@ -126,12 +131,11 @@
         document.getElementById('registerForm').addEventListener('submit', (e) => {
             e.preventDefault();
             
-            // Use FormData to handle file upload
             const formData = new FormData(e.target);
             
             fetch('/api/auth/register', {
                 method: 'POST',
-                body: formData // Fetch will set Content-Type automatically
+                body: formData
             })
             .then(res => res.json())
             .then(data => {
@@ -144,8 +148,6 @@
             })
             .catch(err => alert('เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว'));
         });
-
-
     </script>
 </body>
 </html>
