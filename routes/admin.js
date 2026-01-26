@@ -87,15 +87,16 @@ router.post('/students/:id/reset-password', async (req, res) => {
 // Update Student Details
 router.put('/students/:id', async (req, res) => {
     const { id } = req.params;
-    const { prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone } = req.body;
+    const { prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone, academic_status, group_advisor, department_advisor, gpa } = req.body;
 
     const query = `
         UPDATE students 
         SET prefix = $1, first_name = $2, last_name = $3, level = $4, department_id = $5, dob = $6, 
-            blood_group = $7, phone = $8, father_name = $9, mother_name = $10, parent_phone = $11
-        WHERE student_id = $12`;
+            blood_group = $7, phone = $8, father_name = $9, mother_name = $10, parent_phone = $11,
+            academic_status = $12, group_advisor = $13, department_advisor = $14, gpa = $15
+        WHERE student_id = $16`;
         
-    const params = [prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone, id];
+    const params = [prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone, academic_status, group_advisor, department_advisor, gpa, id];
 
     try {
         await db.query(query, params);
@@ -333,4 +334,236 @@ router.post('/rename-department', async (req, res) => {
     }
 });
 
+// =============================================
+// --- ADVISOR MANAGEMENT ---
+// =============================================
+
+// Get All Advisors
+router.get('/advisors', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT a.*, d.department_name 
+            FROM advisors a 
+            LEFT JOIN departments d ON a.department_id = d.department_id
+            ORDER BY a.advisor_name
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Add New Advisor
+router.post('/advisors', async (req, res) => {
+    const { advisor_name, advisor_type, department_id } = req.body;
+    
+    if (!advisor_name || advisor_name.trim() === '') {
+        return res.status(400).json({ error: 'กรุณาระบุชื่อครูที่ปรึกษา' });
+    }
+    
+    try {
+        const result = await db.query(
+            `INSERT INTO advisors (advisor_name, advisor_type, department_id) 
+             VALUES ($1, $2, $3) RETURNING *`,
+            [advisor_name.trim(), advisor_type || 'group', department_id || null]
+        );
+        res.json({ success: true, advisor: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete Advisor
+router.delete('/advisors/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        // First, remove advisor from any groups
+        await db.query(`UPDATE student_groups SET group_advisor_id = NULL WHERE group_advisor_id = $1`, [id]);
+        // Then delete the advisor
+        await db.query(`DELETE FROM advisors WHERE advisor_id = $1`, [id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// =============================================
+// --- STUDENT GROUPS MANAGEMENT ---
+// =============================================
+
+// Get All Groups with Advisor Info
+router.get('/groups', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT g.*, a.advisor_name, d.department_name,
+                   (SELECT COUNT(*) FROM students s WHERE s.group_id = g.group_id) as student_count
+            FROM student_groups g
+            LEFT JOIN advisors a ON g.group_advisor_id = a.advisor_id
+            LEFT JOIN departments d ON g.department_id = d.department_id
+            ORDER BY g.group_name
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Add New Group
+router.post('/groups', async (req, res) => {
+    const { group_name, level, department_id } = req.body;
+    
+    try {
+        const result = await db.query(
+            `INSERT INTO student_groups (group_name, level, department_id) 
+             VALUES ($1, $2, $3) RETURNING *`,
+            [group_name, level, department_id || null]
+        );
+        res.json({ success: true, group: result.rows[0] });
+    } catch (err) {
+        if (err.code === '23505') { // Unique violation
+            return res.status(400).json({ error: 'กลุ่มนี้มีอยู่แล้ว' });
+        }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Assign Advisor to Group (and update all students in the group)
+router.put('/groups/:id/assign-advisor', async (req, res) => {
+    const { id } = req.params;
+    const { advisor_id } = req.body;
+    
+    try {
+        // 1. Update the group's advisor
+        await db.query(
+            `UPDATE student_groups SET group_advisor_id = $1 WHERE group_id = $2`,
+            [advisor_id || null, id]
+        );
+        
+        // 2. Get advisor name
+        let advisorName = null;
+        if (advisor_id) {
+            const advisorResult = await db.query(`SELECT advisor_name FROM advisors WHERE advisor_id = $1`, [advisor_id]);
+            if (advisorResult.rows[0]) {
+                advisorName = advisorResult.rows[0].advisor_name;
+            }
+        }
+        
+        // 3. Update all students in this group with the advisor name
+        await db.query(
+            `UPDATE students SET group_advisor = $1 WHERE group_id = $2`,
+            [advisorName, id]
+        );
+        
+        // Get count of updated students
+        const countResult = await db.query(`SELECT COUNT(*) as count FROM students WHERE group_id = $1`, [id]);
+        const updatedCount = countResult.rows[0].count;
+        
+        res.json({ 
+            success: true, 
+            message: `อัปเดตครูที่ปรึกษาสำเร็จ (นักศึกษา ${updatedCount} คน)`,
+            updated_students: updatedCount
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Sync Groups from Existing Students (Auto-create groups from level+department combos)
+router.post('/groups/sync-from-students', async (req, res) => {
+    try {
+        // Get unique level+department combinations from students
+        const combosResult = await db.query(`
+            SELECT DISTINCT s.level, s.department_id, d.department_name, d.code as dept_code
+            FROM students s
+            LEFT JOIN departments d ON s.department_id = d.department_id
+            WHERE s.level IS NOT NULL AND s.department_id IS NOT NULL
+            ORDER BY s.level, d.department_name
+        `);
+        
+        let created = 0;
+        let existing = 0;
+        
+        for (const combo of combosResult.rows) {
+            const groupName = `${combo.dept_code || 'DEPT'}.${combo.level.replace('ปวช.', '').replace('ปวส.', '')}`;
+            
+            try {
+                // Try to insert new group
+                const insertResult = await db.query(`
+                    INSERT INTO student_groups (group_name, level, department_id)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (group_name) DO NOTHING
+                    RETURNING group_id
+                `, [groupName, combo.level, combo.department_id]);
+                
+                if (insertResult.rows.length > 0) {
+                    created++;
+                    const groupId = insertResult.rows[0].group_id;
+                    
+                    // Assign students to this group
+                    await db.query(`
+                        UPDATE students 
+                        SET group_id = $1 
+                        WHERE level = $2 AND department_id = $3
+                    `, [groupId, combo.level, combo.department_id]);
+                } else {
+                    existing++;
+                    // Still assign students to existing group
+                    const existingGroup = await db.query(`SELECT group_id FROM student_groups WHERE group_name = $1`, [groupName]);
+                    if (existingGroup.rows[0]) {
+                        await db.query(`
+                            UPDATE students 
+                            SET group_id = $1 
+                            WHERE level = $2 AND department_id = $3
+                        `, [existingGroup.rows[0].group_id, combo.level, combo.department_id]);
+                    }
+                }
+            } catch (insertErr) {
+                console.error('Error creating group:', groupName, insertErr.message);
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            message: `สร้างกลุ่มใหม่ ${created} กลุ่ม, มีอยู่แล้ว ${existing} กลุ่ม`,
+            created,
+            existing
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Assign Student to Group
+router.put('/students/:id/assign-group', async (req, res) => {
+    const { id } = req.params;
+    const { group_id } = req.body;
+    
+    try {
+        // Get the group's advisor
+        let advisorName = null;
+        if (group_id) {
+            const groupResult = await db.query(`
+                SELECT a.advisor_name 
+                FROM student_groups g
+                LEFT JOIN advisors a ON g.group_advisor_id = a.advisor_id
+                WHERE g.group_id = $1
+            `, [group_id]);
+            if (groupResult.rows[0]) {
+                advisorName = groupResult.rows[0].advisor_name;
+            }
+        }
+        
+        // Update student's group and advisor
+        await db.query(
+            `UPDATE students SET group_id = $1, group_advisor = $2 WHERE student_id = $3`,
+            [group_id || null, advisorName, id]
+        );
+        
+        res.json({ success: true, message: 'อัปเดตกลุ่มสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
+

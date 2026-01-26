@@ -33,7 +33,12 @@
         <div class="row">
             <div class="col-md-4 mb-4">
                 <div class="glass-card">
-                    <h4 class="mb-3">ข้อมูลส่วนตัว</h4>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0">ข้อมูลส่วนตัว</h4>
+                        <button class="btn btn-sm btn-outline-primary" onclick="openEditModal()">
+                            <i class="bi bi-pencil-square"></i> แก้ไข
+                        </button>
+                    </div>
                     <div id="studentInfo">
                         <p class="text-center">กำลังโหลด...</p>
                     </div>
@@ -50,8 +55,56 @@
         </div>
     </div>
 
+    <!-- Edit Personal Info Modal -->
+    <div class="modal fade" id="editInfoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square"></i> แก้ไขข้อมูลส่วนตัว</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editInfoForm">
+                        <div class="mb-3">
+                            <label class="form-label">กรุ๊ปเลือด</label>
+                            <select class="form-select" id="editBloodGroup">
+                                <option value="">ไม่ระบุ</option>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="AB">AB</option>
+                                <option value="O">O</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">เบอร์โทรศัพท์</label>
+                            <input type="text" class="form-control" id="editPhone" placeholder="0XX-XXX-XXXX">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">เบอร์โทรศัพท์ผู้ปกครอง</label>
+                            <input type="text" class="form-control" id="editParentPhone" placeholder="0XX-XXX-XXXX">
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> บันทึกข้อมูล
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <script src="js/main.js"></script>
     <script>
+        let currentStudentData = null;
+        let editInfoModal;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            editInfoModal = new bootstrap.Modal(document.getElementById('editInfoModal'));
+        });
+
         function handleLogout() {
             fetch('/api/auth/logout', { method: 'POST' })
                 .then(res => res.json())
@@ -60,38 +113,83 @@
                 });
         }
 
-        fetch('/api/student/info')
-            .then(res => {
-                if(res.status === 401) window.location.href = 'index.html';
-                return res.json();
-            })
-            .then(data => {
-                const infoDiv = document.getElementById('studentInfo');
-                document.getElementById('userNameDisplay').textContent = `${data.first_name} ${data.last_name}`;
-                
-                // Format DOB to BE
-                const [y, m, d] = data.dob.split('-');
-                const beYear = parseInt(y) + 543;
-                const dobFormatted = `${d}/${m}/${beYear}`;
+        function loadStudentInfo() {
+            fetch('/api/student/info')
+                .then(res => {
+                    if(res.status === 401) window.location.href = 'index.html';
+                    return res.json();
+                })
+                .then(data => {
+                    currentStudentData = data;
+                    const infoDiv = document.getElementById('studentInfo');
+                    document.getElementById('userNameDisplay').textContent = `${data.first_name} ${data.last_name}`;
+                    
+                    // Format DOB to BE
+                    const [y, m, d] = data.dob.split('-');
+                    const beYear = parseInt(y) + 543;
+                    const dobFormatted = `${d}/${m}/${beYear}`;
 
-                infoDiv.innerHTML = `
-                    <div class="text-center mb-3">
-                        <img src="${data.student_image || 'img/placeholder.png'}" class="rounded-circle shadow" style="width: 150px; height: 150px; object-fit: cover;">
-                    </div>
-                    <p><strong>รหัสนักศึกษา:</strong> ${data.student_code}</p>
-                    <p><strong>ชื่อ-นามสกุล:</strong> ${data.prefix} ${data.first_name} ${data.last_name}</p>
-                    <p><strong>ระดับชั้น:</strong> ${data.level || '-'}</p>
-                    <p><strong>แผนกวิชา:</strong> ${data.department_name} (${data.dept_code})</p>
-                    <p><strong>วันเกิด:</strong> ${dobFormatted}</p>
-                    <p><strong>กรุ๊ปเลือด:</strong> ${data.blood_group || '-'}</p>
-                    <p><strong>เบอร์โทรศัพท์:</strong> ${data.phone}</p>
-                    <hr>
-                    <p class="text-muted mb-2"><strong>ข้อมูลผู้ปกครอง</strong></p>
-                    <p><strong>บิดา:</strong> ${data.father_name || '-'}</p>
-                    <p><strong>มารดา:</strong> ${data.mother_name || '-'}</p>
-                    <p><strong>เบอร์ผู้ปกครอง:</strong> ${data.parent_phone || '-'}</p>
-                `;
+                    infoDiv.innerHTML = `
+                        <div class="text-center mb-3">
+                            <img src="${data.student_image || 'img/placeholder.png'}" class="rounded-circle shadow" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.src='img/placeholder.png'">
+                        </div>
+                        <p><strong>รหัสนักศึกษา:</strong> ${data.student_code}</p>
+                        <p><strong>ชื่อ-นามสกุล:</strong> ${data.prefix} ${data.first_name} ${data.last_name}</p>
+                        <p><strong>ระดับชั้น:</strong> ${data.level || '-'}</p>
+                        <p><strong>แผนกวิชา:</strong> ${data.department_name} (${data.dept_code})</p>
+                        <p><strong>กลุ่ม:</strong> <span class="badge bg-info">${data.group_name || 'ยังไม่ระบุ'}</span></p>
+                        <p><strong>วันเกิด:</strong> ${dobFormatted}</p>
+                        <p><strong>กรุ๊ปเลือด:</strong> <span class="badge bg-danger">${data.blood_group || '-'}</span></p>
+                        <p><strong>เบอร์โทรศัพท์:</strong> ${data.phone || '-'}</p>
+                        <hr>
+                        <p class="text-muted mb-2"><strong>ครูที่ปรึกษา</strong></p>
+                        <p><strong>ครูที่ปรึกษาประจำกลุ่ม:</strong> ${data.group_advisor || '-'}</p>
+                        <hr>
+                        <p class="text-muted mb-2"><strong>ข้อมูลผู้ปกครอง</strong></p>
+                        <p><strong>บิดา:</strong> ${data.father_name || '-'}</p>
+                        <p><strong>มารดา:</strong> ${data.mother_name || '-'}</p>
+                        <p><strong>เบอร์ผู้ปกครอง:</strong> ${data.parent_phone || '-'}</p>
+                    `;
+                });
+        }
+
+        function openEditModal() {
+            if (currentStudentData) {
+                document.getElementById('editBloodGroup').value = currentStudentData.blood_group || '';
+                document.getElementById('editPhone').value = currentStudentData.phone || '';
+                document.getElementById('editParentPhone').value = currentStudentData.parent_phone || '';
+                editInfoModal.show();
+            }
+        }
+
+        document.getElementById('editInfoForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const body = {
+                blood_group: document.getElementById('editBloodGroup').value,
+                phone: document.getElementById('editPhone').value,
+                parent_phone: document.getElementById('editParentPhone').value
+            };
+            
+            fetch('/api/student/update', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ บันทึกข้อมูลสำเร็จ!');
+                    editInfoModal.hide();
+                    loadStudentInfo(); // Reload info
+                } else {
+                    alert('❌ เกิดข้อผิดพลาด: ' + data.error);
+                }
             });
+        });
+
+        // Initial load
+        loadStudentInfo();
 
         // Load Announcements
         fetch('/api/student/announcements')
@@ -116,3 +214,4 @@
     </script>
 </body>
 </html>
+

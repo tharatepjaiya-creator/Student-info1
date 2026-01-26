@@ -14,9 +14,10 @@ function isAuthenticated(req, res, next) {
 router.get('/info', isAuthenticated, async (req, res) => {
     const studentId = req.session.userId;
     const query = `
-        SELECT s.*, d.department_name, d.code as dept_code 
+        SELECT s.*, d.department_name, d.code as dept_code, g.group_name 
         FROM students s 
         LEFT JOIN departments d ON s.department_id = d.department_id 
+        LEFT JOIN student_groups g ON s.group_id = g.group_id
         WHERE s.student_id = $1`;
         
     try {
@@ -61,4 +62,23 @@ router.get('/announcements', isAuthenticated, async (req, res) => {
     }
 });
 
+// Update Student's Own Info (Limited Fields)
+router.put('/update', isAuthenticated, async (req, res) => {
+    const studentId = req.session.userId;
+    const { blood_group, phone, parent_phone } = req.body;
+    
+    try {
+        await db.query(
+            `UPDATE students 
+             SET blood_group = $1, phone = $2, parent_phone = $3 
+             WHERE student_id = $4`,
+            [blood_group, phone, parent_phone, studentId]
+        );
+        res.json({ success: true, message: 'อัปเดตข้อมูลสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
+

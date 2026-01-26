@@ -57,6 +57,12 @@
                 <li class="nav-item">
                     <button class="nav-link" id="news-tab" data-bs-toggle="tab" data-bs-target="#news" type="button">ข่าวสาร/ประกาศ</button>
                 </li>
+                
+                <li class="nav-item">
+                    <button class="nav-link" id="advisors-tab" data-bs-toggle="tab" data-bs-target="#advisors" type="button">
+                        <i class="bi bi-people-fill"></i> จัดการครูที่ปรึกษา
+                    </button>
+                </li>
             </ul>
             
             <div class="tab-content" id="adminTabContent">
@@ -83,7 +89,10 @@
                                     <th>รหัส</th>
                                     <th>ชื่อ-นามสกุล</th>
                                     <th>แผนก</th>
+                                    <th>กลุ่ม</th>
                                     <th>เบอร์โทร</th>
+                                    <th>GPA</th>
+                                    <th>สถานะภาพ</th>
                                     <th>จัดการ</th>
                                 </tr>
                             </thead>
@@ -105,6 +114,61 @@
 
                     <div id="adminNewsList" class="row">
                         <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Advisors Tab -->
+                <div class="tab-pane fade" id="advisors" role="tabpanel">
+                    <div class="row">
+                        <!-- Left Column: Advisor List -->
+                        <div class="col-md-5">
+                            <div class="glass-card">
+                                <h5 class="mb-3"><i class="bi bi-person-plus-fill"></i> รายชื่อครูที่ปรึกษา</h5>
+                                
+                                <!-- Add Advisor Form -->
+                                <form id="addAdvisorForm" class="mb-3">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="newAdvisorName" placeholder="ชื่อ-นามสกุล ครูที่ปรึกษา" required>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="bi bi-plus-lg"></i> เพิ่ม
+                                        </button>
+                                    </div>
+                                </form>
+                                
+                                <!-- Advisor List -->
+                                <div id="advisorList" class="list-group">
+                                    <p class="text-muted text-center">กำลังโหลด...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column: Group Assignment -->
+                        <div class="col-md-7">
+                            <div class="glass-card">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0"><i class="bi bi-diagram-3-fill"></i> กำหนดครูที่ปรึกษาประจำกลุ่ม</h5>
+                                    <button class="btn btn-outline-primary btn-sm" onclick="syncGroupsFromStudents()">
+                                        <i class="bi bi-arrow-repeat"></i> ซิงค์กลุ่มจากนักศึกษา
+                                    </button>
+                                </div>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>กลุ่มเรียน</th>
+                                                <th>ระดับชั้น</th>
+                                                <th>จำนวน</th>
+                                                <th>ครูที่ปรึกษา</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="groupsTableBody">
+                                            <tr><td colspan="4" class="text-center text-muted">กำลังโหลด...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -239,6 +303,29 @@
                                     </div>
 
                                     <div class="col-12"><hr class="my-2"></div>
+                                    <div class="col-12 text-muted mb-2"><strong>ข้อมูลการเรียน</strong></div>
+                                    
+                                    <div class="col-md-4">
+                                        <label class="form-label">สถานะภาพการเรียน</label>
+                                        <select class="form-select" id="editAcademicStatus">
+                                            <option value="ปกติ">ปกติ</option>
+                                            <option value="วิทยาทัณฑ์">วิทยาทัณฑ์</option>
+                                            <option value="พ้นสภาพ">พ้นสภาพ</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">เกรดเฉลี่ย (GPA)</label>
+                                        <input type="number" class="form-control" id="editGpa" step="0.01" min="0" max="4" placeholder="0.00 - 4.00">
+                                    </div>
+                                    <div class="col-md-4"></div>
+                                    
+                                    <div class="col-md-12">
+                                        <label class="form-label">ครูที่ปรึกษาประจำกลุ่ม</label>
+                                        <input type="text" class="form-control" id="editGroupAdvisor" placeholder="ชื่อครูที่ปรึกษาประจำกลุ่ม" readonly>
+                                        <small class="text-muted">* กำหนดโดยอัตโนมัติจากกลุ่มที่เลือก</small>
+                                    </div>
+
+                                    <div class="col-12"><hr class="my-2"></div>
                                     <div class="col-12 text-muted mb-2"><strong>ข้อมูลผู้ปกครอง</strong></div>
                                     
                                     <div class="col-md-6">
@@ -276,6 +363,91 @@
                              </form>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Detail Modal -->
+    <div class="modal fade" id="studentDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-person-badge"></i> รายละเอียดนักศึกษา</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <img id="detailProfileImage" src="img/placeholder.png" class="rounded-circle shadow" style="width: 150px; height: 150px; object-fit: cover;">
+                            <h4 class="mt-3 mb-0" id="detailFullName">-</h4>
+                            <p class="text-muted" id="detailStudentCode">-</p>
+                            <span id="detailStatusBadge" class="badge bg-success">ปกติ</span>
+                            <span id="detailGroupBadge" class="badge bg-info ms-1">กลุ่ม -</span>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">แผนกวิชา</label>
+                                    <p class="mb-2 fw-bold" id="detailDepartment">-</p>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">ระดับชั้น</label>
+                                    <p class="mb-2 fw-bold" id="detailLevel">-</p>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">เกรดเฉลี่ย (GPA)</label>
+                                    <p class="mb-2 fw-bold" id="detailGpa">-</p>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">เบอร์โทร</label>
+                                    <p class="mb-2 fw-bold" id="detailPhone">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Advisor Section - Only Group Advisor -->
+                    <h6 class="text-muted mb-3"><i class="bi bi-people-fill"></i> ข้อมูลอาจารย์ที่ปรึกษา</h6>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="p-3 rounded-3" style="background: rgba(40, 167, 69, 0.15); border: 2px solid rgba(40, 167, 69, 0.3);">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-person-workspace text-success fs-4 me-2"></i>
+                                    <strong class="text-success">ครูที่ปรึกษาประจำกลุ่ม</strong>
+                                </div>
+                                <p class="mb-0 fs-5" id="detailGroupAdvisor">-</p>
+                                <small class="text-muted">Group Advisor</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Parent Info -->
+                    <h6 class="text-muted mb-3"><i class="bi bi-house-heart-fill"></i> ข้อมูลผู้ปกครอง</h6>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-0">ชื่อบิดา</label>
+                            <p class="mb-1" id="detailFather">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-0">ชื่อมารดา</label>
+                            <p class="mb-1" id="detailMother">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-0">เบอร์โทรผู้ปกครอง</label>
+                            <p class="mb-1" id="detailParentPhone">-</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                    <button type="button" class="btn btn-warning" id="detailEditBtn">
+                        <i class="bi bi-pencil-square"></i> แก้ไขข้อมูล
+                    </button>
                 </div>
             </div>
         </div>
@@ -369,6 +541,21 @@
             });
         }
 
+        // Global groups array for student assignment dropdown
+        let allGroups = [];
+        
+        async function loadGroupsForDropdown() {
+            try {
+                const res = await fetch('/api/admin/groups');
+                allGroups = await res.json();
+            } catch (err) {
+                console.error('Error loading groups:', err);
+            }
+        }
+        
+        // Load groups first, then students
+        loadGroupsForDropdown().then(() => loadStudents());
+
         function loadStudents() {
             fetch('/api/admin/students').then(res => res.json()).then(data => {
                 const tbody = document.getElementById('studentsTableBody');
@@ -387,12 +574,44 @@
                         (filterDept === '' || dept === filterDept) &&
                         (filterLevel === '' || level === filterLevel)) {
                         
+                        // Status Badge Color
+                        let statusBadge = '';
+                        const status = student.academic_status || 'ปกติ';
+                        if (status === 'วิทยาทัณฑ์') {
+                            statusBadge = `<span class="badge bg-warning text-dark">${status}</span>`;
+                        } else if (status === 'พ้นสภาพ') {
+                            statusBadge = `<span class="badge bg-danger">${status}</span>`;
+                        } else {
+                            statusBadge = `<span class="badge bg-success">${status}</span>`;
+                        }
+                        
+                        // GPA Display
+                        const gpaDisplay = student.gpa ? parseFloat(student.gpa).toFixed(2) : '-';
+                        
+                        // Group Display with Dropdown
+                        const groupOptions = allGroups.map(g => 
+                            `<option value="${g.group_id}" ${g.group_id === student.group_id ? 'selected' : ''}>กลุ่ม ${g.group_name}</option>`
+                        ).join('');
+                        const groupDropdown = `
+                            <select class="form-select form-select-sm" style="min-width: 120px;" onchange="assignStudentToGroup('${student.student_id}', this.value)">
+                                <option value="">-- เลือกกลุ่ม --</option>
+                                ${groupOptions}
+                            </select>
+                        `;
+                        
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>${student.student_code}</td>
-                            <td>${student.first_name} ${student.last_name}</td>
+                            <td>
+                                <a href="#" class="text-decoration-none fw-bold student-name-link" onclick="openStudentDetailModal('${student.student_id}'); return false;">
+                                    ${student.first_name} ${student.last_name}
+                                </a>
+                            </td>
                             <td>${student.department_name}</td>
+                            <td>${groupDropdown}</td>
                             <td>${student.phone}</td>
+                            <td>${gpaDisplay}</td>
+                            <td>${statusBadge}</td>
                             <td>
                                 <div class="d-flex gap-2">
                                     <button class="btn btn-sm btn-warning" onclick="openEditStudentModal('${student.student_id}')" title="แก้ไขข้อมูล">
@@ -413,6 +632,36 @@
         document.getElementById('studentSearch').addEventListener('input', loadStudents);
         document.getElementById('filterDept').addEventListener('change', loadStudents);
         document.getElementById('filterLevel').addEventListener('change', loadStudents);
+
+        // Assign Student to Group (and auto-assign advisor)
+        function assignStudentToGroup(studentId, groupId) {
+            fetch(`/api/admin/students/${studentId}/assign-group`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ group_id: groupId || null })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Show toast notification
+                    const toast = document.createElement('div');
+                    toast.className = 'position-fixed bottom-0 end-0 p-3';
+                    toast.style.zIndex = '11';
+                    toast.innerHTML = `
+                        <div class="toast show bg-success text-white" role="alert">
+                            <div class="toast-body">
+                                <i class="bi bi-check-circle"></i> ${data.message}
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            });
+        }
+
 
         // Edit Student Logic
         let editStudentModal;
@@ -440,6 +689,11 @@
                     document.getElementById('editMother').value = student.mother_name || '';
                     document.getElementById('editParentPhone').value = student.parent_phone || '';
                     
+                    // New fields
+                    document.getElementById('editAcademicStatus').value = student.academic_status || 'ปกติ';
+                    document.getElementById('editGpa').value = student.gpa || '';
+                    document.getElementById('editGroupAdvisor').value = student.group_advisor || '';
+                    
                     // Image
                     const img = document.getElementById('editProfileImage');
                     img.src = student.student_image || 'img/placeholder.png';
@@ -465,6 +719,76 @@
                 });
         }
         
+        // Student Detail Modal
+        let studentDetailModal;
+        let currentDetailStudentId = null;
+        document.addEventListener('DOMContentLoaded', () => {
+            studentDetailModal = new bootstrap.Modal(document.getElementById('studentDetailModal'));
+            
+            // Edit button in detail modal
+            document.getElementById('detailEditBtn').addEventListener('click', () => {
+                if (currentDetailStudentId) {
+                    studentDetailModal.hide();
+                    openEditStudentModal(currentDetailStudentId);
+                }
+            });
+        });
+        
+        function openStudentDetailModal(id) {
+            currentDetailStudentId = id;
+            fetch(`/api/admin/students/${id}`)
+                .then(res => res.json())
+                .then(student => {
+                    if(student.error) return alert(student.error);
+                    
+                    // Basic Info
+                    document.getElementById('detailFullName').innerText = `${student.prefix}${student.first_name} ${student.last_name}`;
+                    document.getElementById('detailStudentCode').innerText = student.student_code;
+                    document.getElementById('detailDepartment').innerText = student.department_name || '-';
+                    document.getElementById('detailLevel').innerText = student.level || '-';
+                    document.getElementById('detailGpa').innerText = student.gpa ? parseFloat(student.gpa).toFixed(2) : '-';
+                    document.getElementById('detailPhone').innerText = student.phone || '-';
+                    
+                    // Status Badge
+                    const statusBadge = document.getElementById('detailStatusBadge');
+                    const status = student.academic_status || 'ปกติ';
+                    statusBadge.innerText = status;
+                    statusBadge.className = 'badge';
+                    if (status === 'วิทยาทัณฑ์') {
+                        statusBadge.classList.add('bg-warning', 'text-dark');
+                    } else if (status === 'พ้นสภาพ') {
+                        statusBadge.classList.add('bg-danger');
+                    } else {
+                        statusBadge.classList.add('bg-success');
+                    }
+                    
+                    // Group Badge
+                    const groupBadge = document.getElementById('detailGroupBadge');
+                    if (student.group_id && allGroups.length > 0) {
+                        const group = allGroups.find(g => g.group_id === student.group_id);
+                        groupBadge.innerText = group ? `กลุ่ม ${group.group_name}` : 'กลุ่ม -';
+                    } else {
+                        groupBadge.innerText = 'ยังไม่มีกลุ่ม';
+                    }
+                    
+                    // Advisors (Clearly Separated)
+                    document.getElementById('detailGroupAdvisor').innerText = student.group_advisor || 'ยังไม่ระบุ';
+                    document.getElementById('detailDeptAdvisor').innerText = student.department_advisor || 'ยังไม่ระบุ';
+                    
+                    // Parent Info
+                    document.getElementById('detailFather').innerText = student.father_name || '-';
+                    document.getElementById('detailMother').innerText = student.mother_name || '-';
+                    document.getElementById('detailParentPhone').innerText = student.parent_phone || '-';
+                    
+                    // Image
+                    const img = document.getElementById('detailProfileImage');
+                    img.src = student.student_image || 'img/placeholder.png';
+                    img.onerror = () => { img.src = 'img/placeholder.png'; };
+                    
+                    studentDetailModal.show();
+                });
+        }
+        
         document.getElementById('editStudentForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const id = document.getElementById('editStudentId').value;
@@ -479,7 +803,10 @@
                 phone: document.getElementById('editPhone').value,
                 father_name: document.getElementById('editFather').value,
                 mother_name: document.getElementById('editMother').value,
-                parent_phone: document.getElementById('editParentPhone').value
+                parent_phone: document.getElementById('editParentPhone').value,
+                academic_status: document.getElementById('editAcademicStatus').value,
+                gpa: document.getElementById('editGpa').value || null,
+                group_advisor: document.getElementById('editGroupAdvisor').value
             };
             
             fetch(`/api/admin/students/${id}`, {
@@ -625,6 +952,174 @@
                         if(data.success) loadAdminNews();
                     });
             }
+        }
+
+        // =============================================
+        // ADVISOR MANAGEMENT FUNCTIONS
+        // =============================================
+        
+        let allAdvisors = [];
+        
+        function loadAdvisors() {
+            fetch('/api/admin/advisors')
+                .then(res => res.json())
+                .then(data => {
+                    allAdvisors = data;
+                    const list = document.getElementById('advisorList');
+                    
+                    if (data.length === 0) {
+                        list.innerHTML = `<p class="text-muted text-center">ยังไม่มีครูที่ปรึกษา<br><small>กรุณาเพิ่มครูใหม่</small></p>`;
+                        return;
+                    }
+                    
+                    list.innerHTML = data.map(a => `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-person-badge text-primary me-2"></i>
+                                <strong>${a.advisor_name}</strong>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAdvisor(${a.advisor_id})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `).join('');
+                    
+                    // Reload groups to update dropdowns
+                    loadGroups();
+                });
+        }
+        
+        document.getElementById('addAdvisorForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('newAdvisorName').value.trim();
+            
+            if (!name) return alert('กรุณาระบุชื่อครู');
+            
+            fetch('/api/admin/advisors', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ advisor_name: name })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('newAdvisorName').value = '';
+                    loadAdvisors();
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + data.error);
+                }
+            });
+        });
+        
+        function deleteAdvisor(id) {
+            if (confirm('ต้องการลบครูที่ปรึกษานี้หรือไม่?')) {
+                fetch(`/api/admin/advisors/${id}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadAdvisors();
+                        }
+                    });
+            }
+        }
+        
+        // =============================================
+        // GROUP MANAGEMENT FUNCTIONS
+        // =============================================
+        
+        function loadGroups() {
+            fetch('/api/admin/groups')
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById('groupsTableBody');
+                    
+                    if (data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">
+                            ยังไม่มีกลุ่มเรียน<br>
+                            <button class="btn btn-sm btn-primary mt-2" onclick="syncGroupsFromStudents()">
+                                <i class="bi bi-arrow-repeat"></i> สร้างกลุ่มจากข้อมูลนักศึกษา
+                            </button>
+                        </td></tr>`;
+                        return;
+                    }
+                    
+                    tbody.innerHTML = data.map(g => {
+                        const advisorOptions = allAdvisors.map(a => 
+                            `<option value="${a.advisor_id}" ${a.advisor_id === g.group_advisor_id ? 'selected' : ''}>${a.advisor_name}</option>`
+                        ).join('');
+                        
+                        return `
+                            <tr>
+                                <td><strong>${g.group_name}</strong></td>
+                                <td>${g.level || '-'}</td>
+                                <td><span class="badge bg-info">${g.student_count || 0} คน</span></td>
+                                <td>
+                                    <select class="form-select form-select-sm" onchange="assignAdvisorToGroup(${g.group_id}, this.value)" style="min-width: 180px;">
+                                        <option value="">-- เลือกครูที่ปรึกษา --</option>
+                                        ${advisorOptions}
+                                    </select>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                });
+        }
+        
+        function syncGroupsFromStudents() {
+            if (!confirm('ระบบจะสร้างกลุ่มเรียนจากข้อมูลระดับชั้นและแผนกของนักศึกษา\n\nดำเนินการต่อหรือไม่?')) return;
+            
+            fetch('/api/admin/groups/sync-from-students', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`✅ ${data.message}`);
+                        loadGroups();
+                        loadStudents(); // Reload students to show group assignments
+                    } else {
+                        alert('❌ เกิดข้อผิดพลาด: ' + data.error);
+                    }
+                });
+        }
+        
+        function assignAdvisorToGroup(groupId, advisorId) {
+            fetch(`/api/admin/groups/${groupId}/assign-advisor`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ advisor_id: advisorId || null })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message briefly
+                    const toast = document.createElement('div');
+                    toast.className = 'position-fixed bottom-0 end-0 p-3';
+                    toast.style.zIndex = '11';
+                    toast.innerHTML = `
+                        <div class="toast show bg-success text-white" role="alert">
+                            <div class="toast-body">
+                                <i class="bi bi-check-circle"></i> ${data.message}
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+                    
+                    // Reload students to reflect changes
+                    loadStudents();
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            });
+        }
+        
+        // Load advisors and groups when tab is shown
+        document.getElementById('advisors-tab').addEventListener('shown.bs.tab', () => {
+            loadAdvisors();
+        });
+        
+        // Initial load if already on advisor tab
+        if (document.getElementById('advisors-tab').classList.contains('active')) {
+            loadAdvisors();
         }
     </script>
 </body>
