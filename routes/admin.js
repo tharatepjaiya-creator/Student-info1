@@ -391,55 +391,69 @@ router.delete('/advisors/:id', async (req, res) => {
 // --- STUDENT GROUPS MANAGEMENT ---
 // =============================================
 
-// Get All Groups with Advisor Info
-router.get('/groups', async (req, res) => {
+// Get Groups by Department (5 groups per level, 5 levels per department)
+// This endpoint generates 25 groups for ALL departments (5 levels x 5 groups)
+router.get('/groups-by-department', async (req, res) => {
     try {
-        const result = await db.query(`
-            SELECT g.*, a.advisor_name, d.department_name,
-                   (SELECT COUNT(*) FROM students s WHERE s.group_id = g.group_id) as student_count
-            FROM student_groups g
-            LEFT JOIN advisors a ON g.group_advisor_id = a.advisor_id
-            LEFT JOIN departments d ON g.department_id = d.department_id
-            ORDER BY g.group_name
+        // Get ALL departments
+        const allDepts = await db.query(`
+            SELECT department_id, department_name, code
+            FROM departments
+            ORDER BY department_name
         `);
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Add New Group
-router.post('/groups', async (req, res) => {
-    const { group_name, level, department_id } = req.body;
-    
-    try {
-        const result = await db.query(
-            `INSERT INTO student_groups (group_name, level, department_id) 
-             VALUES ($1, $2, $3) RETURNING *`,
-            [group_name, level, department_id || null]
-        );
-        res.json({ success: true, group: result.rows[0] });
-    } catch (err) {
-        if (err.code === '23505') { // Unique violation
-            return res.status(400).json({ error: 'กลุ่มนี้มีอยู่แล้ว' });
-        }
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Assign Advisor to Group (and update all students in the group)
-router.put('/groups/:id/assign-advisor', async (req, res) => {
-    const { id } = req.params;
-    const { advisor_id } = req.body;
-    
-    try {
-        // 1. Update the group's advisor
-        await db.query(
-            `UPDATE student_groups SET group_advisor_id = $1 WHERE group_id = $2`,
-            [advisor_id || null, id]
-        );
         
-        // 2. Get advisor name
+        // Levels with Thai abbreviations
+        const levels = [
+            { name: 'ปวช.1', code: '1', abbr: 'ช.1' },
+            { name: 'ปวช.2', code: '2', abbr: 'ช.2' },
+            { name: 'ปวช.3', code: '3', abbr: 'ช.3' },
+            { name: 'ปวส.1', code: '4', abbr: 'ส.1' },
+            { name: 'ปวส.2', code: '5', abbr: 'ส.2' }
+        ];
+        
+        // Generate 5 groups per level for each department
+        const groups = [];
+        for (const dept of allDepts.rows) {
+            const deptCode = dept.code || 'DEPT';
+            
+            for (const level of levels) {
+                for (let i = 1; i <= 5; i++) {
+                    const groupName = `${deptCode}${level.abbr}-กลุ่ม${i}`; // e.g., TCช.1-กลุ่ม1, TCส.2-กลุ่ม1
+                    groups.push({
+                        group_id: `${dept.department_id}_${level.code}_${i}`, // Virtual group ID
+                        group_name: groupName,
+                        group_display: `กลุ่ม ${groupName}`,
+                        department_id: dept.department_id,
+                        department_name: dept.department_name,
+                        department_code: deptCode,
+                        level: level.name,
+                        level_code: level.code,
+                        group_number: i
+                    });
+                }
+            }
+        }
+        
+        res.json(groups);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DEPRECATED: Old groups endpoint - now using virtual groups from /groups-by-department
+
+// DEPRECATED: Manual group creation removed - groups are now virtual
+
+
+// DEPRECATED: Old assign advisor by ID - now using /groups/assign-advisor-by-name
+
+
+// Assign Advisor to Group by Group Name (for new virtual groups like E1, TC2)
+router.put('/groups/assign-advisor-by-name', async (req, res) => {
+    const { group_name, advisor_id } = req.body;
+    
+    try {
+        // Get advisor name
         let advisorName = null;
         if (advisor_id) {
             const advisorResult = await db.query(`SELECT advisor_name FROM advisors WHERE advisor_id = $1`, [advisor_id]);
@@ -448,19 +462,17 @@ router.put('/groups/:id/assign-advisor', async (req, res) => {
             }
         }
         
-        // 3. Update all students in this group with the advisor name
-        await db.query(
-            `UPDATE students SET group_advisor = $1 WHERE group_id = $2`,
-            [advisorName, id]
+        // Update all students with this group name
+        const updateResult = await db.query(
+            `UPDATE students SET group_advisor = $1 WHERE student_group = $2`,
+            [advisorName, group_name]
         );
         
-        // Get count of updated students
-        const countResult = await db.query(`SELECT COUNT(*) as count FROM students WHERE group_id = $1`, [id]);
-        const updatedCount = countResult.rows[0].count;
+        const updatedCount = updateResult.rowCount;
         
         res.json({ 
             success: true, 
-            message: `อัปเดตครูที่ปรึกษาสำเร็จ (นักศึกษา ${updatedCount} คน)`,
+            message: `อัปเดตครูที่ปรึกษากลุ่ม ${group_name} สำเร็จ (นักศึกษา ${updatedCount} คน)`,
             updated_students: updatedCount
         });
     } catch (err) {
@@ -468,95 +480,19 @@ router.put('/groups/:id/assign-advisor', async (req, res) => {
     }
 });
 
-// Sync Groups from Existing Students (Auto-create groups from level+department combos)
-router.post('/groups/sync-from-students', async (req, res) => {
-    try {
-        // Get unique level+department combinations from students
-        const combosResult = await db.query(`
-            SELECT DISTINCT s.level, s.department_id, d.department_name, d.code as dept_code
-            FROM students s
-            LEFT JOIN departments d ON s.department_id = d.department_id
-            WHERE s.level IS NOT NULL AND s.department_id IS NOT NULL
-            ORDER BY s.level, d.department_name
-        `);
-        
-        let created = 0;
-        let existing = 0;
-        
-        for (const combo of combosResult.rows) {
-            const groupName = `${combo.dept_code || 'DEPT'}.${combo.level.replace('ปวช.', '').replace('ปวส.', '')}`;
-            
-            try {
-                // Try to insert new group
-                const insertResult = await db.query(`
-                    INSERT INTO student_groups (group_name, level, department_id)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (group_name) DO NOTHING
-                    RETURNING group_id
-                `, [groupName, combo.level, combo.department_id]);
-                
-                if (insertResult.rows.length > 0) {
-                    created++;
-                    const groupId = insertResult.rows[0].group_id;
-                    
-                    // Assign students to this group
-                    await db.query(`
-                        UPDATE students 
-                        SET group_id = $1 
-                        WHERE level = $2 AND department_id = $3
-                    `, [groupId, combo.level, combo.department_id]);
-                } else {
-                    existing++;
-                    // Still assign students to existing group
-                    const existingGroup = await db.query(`SELECT group_id FROM student_groups WHERE group_name = $1`, [groupName]);
-                    if (existingGroup.rows[0]) {
-                        await db.query(`
-                            UPDATE students 
-                            SET group_id = $1 
-                            WHERE level = $2 AND department_id = $3
-                        `, [existingGroup.rows[0].group_id, combo.level, combo.department_id]);
-                    }
-                }
-            } catch (insertErr) {
-                console.error('Error creating group:', groupName, insertErr.message);
-            }
-        }
-        
-        res.json({ 
-            success: true, 
-            message: `สร้างกลุ่มใหม่ ${created} กลุ่ม, มีอยู่แล้ว ${existing} กลุ่ม`,
-            created,
-            existing
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+// DEPRECATED: Sync functionality removed - groups are now virtual and don't need syncing
 
-// Assign Student to Group
+
+// Assign Student to Group (stores group name like E1, E2, TC3)
 router.put('/students/:id/assign-group', async (req, res) => {
     const { id } = req.params;
-    const { group_id } = req.body;
+    const { group_id } = req.body; // This is now the group_name (e.g., E1, TC3)
     
     try {
-        // Get the group's advisor
-        let advisorName = null;
-        if (group_id) {
-            const groupResult = await db.query(`
-                SELECT a.advisor_name 
-                FROM student_groups g
-                LEFT JOIN advisors a ON g.group_advisor_id = a.advisor_id
-                WHERE g.group_id = $1
-            `, [group_id]);
-            if (groupResult.rows[0]) {
-                advisorName = groupResult.rows[0].advisor_name;
-            }
-        }
-        
-        // Update student's group and advisor
+        // Update student's group name
         await db.query(
-            `UPDATE students SET group_id = $1, group_advisor = $2 WHERE student_id = $3`,
-            [group_id || null, advisorName, id]
+            `UPDATE students SET student_group = $1 WHERE student_id = $2`,
+            [group_id || null, id]
         );
         
         res.json({ success: true, message: 'อัปเดตกลุ่มสำเร็จ' });

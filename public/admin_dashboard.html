@@ -147,18 +147,15 @@
                             <div class="glass-card">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h5 class="mb-0"><i class="bi bi-diagram-3-fill"></i> กำหนดครูที่ปรึกษาประจำกลุ่ม</h5>
-                                    <button class="btn btn-outline-primary btn-sm" onclick="syncGroupsFromStudents()">
-                                        <i class="bi bi-arrow-repeat"></i> ซิงค์กลุ่มจากนักศึกษา
-                                    </button>
                                 </div>
                                 
                                 <div class="table-responsive">
                                     <table class="table table-hover align-middle">
                                         <thead class="table-light">
                                             <tr>
-                                                <th>กลุ่มเรียน</th>
+                                                <th>กลุ่ม</th>
+                                                <th>แผนก</th>
                                                 <th>ระดับชั้น</th>
-                                                <th>จำนวน</th>
                                                 <th>ครูที่ปรึกษา</th>
                                             </tr>
                                         </thead>
@@ -546,7 +543,8 @@
         
         async function loadGroupsForDropdown() {
             try {
-                const res = await fetch('/api/admin/groups');
+                // Use new API that generates 5 groups per department with registered students
+                const res = await fetch('/api/admin/groups-by-department');
                 allGroups = await res.json();
             } catch (err) {
                 console.error('Error loading groups:', err);
@@ -588,12 +586,34 @@
                         // GPA Display
                         const gpaDisplay = student.gpa ? parseFloat(student.gpa).toFixed(2) : '-';
                         
-                        // Group Display with Dropdown
-                        const groupOptions = allGroups.map(g => 
-                            `<option value="${g.group_id}" ${g.group_id === student.group_id ? 'selected' : ''}>กลุ่ม ${g.group_name}</option>`
-                        ).join('');
+                        // Group Display with Dropdown - Organized by level
+                        const studentDeptGroups = allGroups.filter(g => g.department_id === student.department_id);
+                        
+                        // Group by level for better UX
+                        const groupsByLevel = {};
+                        studentDeptGroups.forEach(g => {
+                            if (!groupsByLevel[g.level]) {
+                                groupsByLevel[g.level] = [];
+                            }
+                            groupsByLevel[g.level].push(g);
+                        });
+                        
+                        // Generate optgroup HTML
+                        let groupOptions = '';
+                        const levelOrder = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1', 'ปวส.2'];
+                        levelOrder.forEach(level => {
+                            if (groupsByLevel[level] && groupsByLevel[level].length > 0) {
+                                groupOptions += `<optgroup label="── ${level} ──">`;
+                                groupsByLevel[level].forEach(g => {
+                                    const selected = g.group_name === student.student_group ? 'selected' : '';
+                                    groupOptions += `<option value="${g.group_name}" ${selected}>${g.group_name}</option>`;
+                                });
+                                groupOptions += `</optgroup>`;
+                            }
+                        });
+                        
                         const groupDropdown = `
-                            <select class="form-select form-select-sm" style="min-width: 120px;" onchange="assignStudentToGroup('${student.student_id}', this.value)">
+                            <select class="form-select form-select-sm" style="min-width: 140px;" onchange="assignStudentToGroup('${student.student_id}', this.value)">
                                 <option value="">-- เลือกกลุ่ม --</option>
                                 ${groupOptions}
                             </select>
@@ -762,18 +782,16 @@
                         statusBadge.classList.add('bg-success');
                     }
                     
-                    // Group Badge
+                    // Group Badge - use student_group field
                     const groupBadge = document.getElementById('detailGroupBadge');
-                    if (student.group_id && allGroups.length > 0) {
-                        const group = allGroups.find(g => g.group_id === student.group_id);
-                        groupBadge.innerText = group ? `กลุ่ม ${group.group_name}` : 'กลุ่ม -';
+                    if (student.student_group) {
+                        groupBadge.innerText = `กลุ่ม ${student.student_group}`;
                     } else {
                         groupBadge.innerText = 'ยังไม่มีกลุ่ม';
                     }
                     
-                    // Advisors (Clearly Separated)
+                    // Group Advisor
                     document.getElementById('detailGroupAdvisor').innerText = student.group_advisor || 'ยังไม่ระบุ';
-                    document.getElementById('detailDeptAdvisor').innerText = student.department_advisor || 'ยังไม่ระบุ';
                     
                     // Parent Info
                     document.getElementById('detailFather').innerText = student.father_name || '-';
@@ -1028,41 +1046,155 @@
         // =============================================
         
         function loadGroups() {
-            fetch('/api/admin/groups')
+            // Use new API that generates 25 groups per department (5 levels x 5 groups)
+            fetch('/api/admin/groups-by-department')
                 .then(res => res.json())
                 .then(data => {
                     const tbody = document.getElementById('groupsTableBody');
                     
                     if (data.length === 0) {
                         tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">
-                            ยังไม่มีกลุ่มเรียน<br>
-                            <button class="btn btn-sm btn-primary mt-2" onclick="syncGroupsFromStudents()">
-                                <i class="bi bi-arrow-repeat"></i> สร้างกลุ่มจากข้อมูลนักศึกษา
-                            </button>
+                            ยังไม่มีแผนกในระบบ
                         </td></tr>`;
                         return;
                     }
                     
-                    tbody.innerHTML = data.map(g => {
-                        const advisorOptions = allAdvisors.map(a => 
-                            `<option value="${a.advisor_id}" ${a.advisor_id === g.group_advisor_id ? 'selected' : ''}>${a.advisor_name}</option>`
-                        ).join('');
+                    // Group by department, then by level
+                    const groupsByDept = {};
+                    data.forEach(g => {
+                        if (!groupsByDept[g.department_id]) {
+                            groupsByDept[g.department_id] = {
+                                department_name: g.department_name,
+                                department_code: g.department_code,
+                                levels: {}
+                            };
+                        }
+                        if (!groupsByDept[g.department_id].levels[g.level]) {
+                            groupsByDept[g.department_id].levels[g.level] = {
+                                level_name: g.level,
+                                groups: []
+                            };
+                        }
+                        groupsByDept[g.department_id].levels[g.level].groups.push(g);
+                    });
+                    
+                    // Build table rows with enhanced visual design
+                    let html = '';
+                    let deptIndex = 0;
+                    
+                    Object.values(groupsByDept).forEach(dept => {
+                        const deptCollapseId = `dept-${deptIndex}`;
+                        const totalGroups = Object.values(dept.levels).reduce((sum, level) => sum + level.groups.length, 0);
                         
-                        return `
-                            <tr>
-                                <td><strong>${g.group_name}</strong></td>
-                                <td>${g.level || '-'}</td>
-                                <td><span class="badge bg-info">${g.student_count || 0} คน</span></td>
-                                <td>
-                                    <select class="form-select form-select-sm" onchange="assignAdvisorToGroup(${g.group_id}, this.value)" style="min-width: 180px;">
-                                        <option value="">-- เลือกครูที่ปรึกษา --</option>
-                                        ${advisorOptions}
-                                    </select>
+                        // Department header row - Enhanced with badge
+                        html += `
+                            <tr class="table-primary cursor-pointer" onclick="toggleSection('${deptCollapseId}')" style="cursor: pointer; font-size: 1.05rem;">
+                                <td colspan="4" style="padding: 12px 16px;">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <strong>
+                                            <i class="bi bi-chevron-right me-2" id="icon-${deptCollapseId}" style="transition: transform 0.2s;"></i>
+                                            <i class="bi bi-building-fill me-2"></i>
+                                            ${dept.department_name}
+                                        </strong>
+                                        <span class="badge bg-white text-primary">${totalGroups} กลุ่ม</span>
+                                    </div>
                                 </td>
                             </tr>
                         `;
-                    }).join('');
+                        
+                        // Levels under this department
+                        let levelIndex = 0;
+                        Object.values(dept.levels).forEach(level => {
+                            const levelCollapseId = `${deptCollapseId}-level-${levelIndex}`;
+                            
+                            // Level header row - Improved styling
+                            html += `
+                                <tr class="section-${deptCollapseId} cursor-pointer" onclick="toggleSection('${levelCollapseId}')" 
+                                    style="display: none; cursor: pointer; background-color: #f0f4ff;">
+                                    <td colspan="4" style="padding: 10px 16px 10px 40px;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <strong style="color: #495057;">
+                                                <i class="bi bi-chevron-right me-2" id="icon-${levelCollapseId}" style="font-size: 0.85rem; transition: transform 0.2s;"></i>
+                                                <i class="bi bi-mortarboard-fill me-2 text-primary"></i>
+                                                ${level.level_name}
+                                            </strong>
+                                            <span class="badge bg-secondary" style="font-size: 0.75rem;">${level.groups.length} กลุ่ม</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                            
+                            // Group rows for this level - Enhanced design
+                            level.groups.forEach((g, idx) => {
+                                const advisorOptions = allAdvisors.map(a => 
+                                    `<option value="${a.advisor_id}">${a.advisor_name}</option>`
+                                ).join('');
+                                
+                                const rowBg = idx % 2 === 0 ? '#ffffff' : '#fafbff';
+                                
+                                html += `
+                                    <tr class="section-${levelCollapseId}" style="display: none; background-color: ${rowBg};">
+                                        <td style="padding: 10px 16px 10px 64px;">
+                                            <i class="bi bi-people-fill text-muted me-2" style="font-size: 0.9rem;"></i>
+                                            <strong style="color: #2c3e50; font-size: 0.95rem;">${g.group_name}</strong>
+                                        </td>
+                                        <td style="color: #6c757d; font-size: 0.9rem;">${dept.department_name}</td>
+                                        <td>
+                                            <span class="badge" style="background-color: #e3f2fd; color: #1976d2; font-size: 0.85rem;">
+                                                ${level.level_name}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm shadow-sm" 
+                                                onchange="assignAdvisorToGroupByName('${g.group_name}', this.value)" 
+                                                style="min-width: 200px; border: 1px solid #dee2e6; border-radius: 6px;">
+                                                <option value="">-- เลือกครูที่ปรึกษา --</option>
+                                                ${advisorOptions}
+                                            </select>
+                                        </td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            levelIndex++;
+                        });
+                        
+                        deptIndex++;
+                    });
+                    
+                    tbody.innerHTML = html;
                 });
+        }
+        
+        // Toggle section with smooth animation
+        function toggleSection(collapseId) {
+            const rows = document.querySelectorAll(`.section-${collapseId}`);
+            const icon = document.getElementById(`icon-${collapseId}`);
+            
+            // Check current state (expanded or collapsed)
+            const isExpanded = rows.length > 0 && rows[0].style.display !== 'none';
+            
+            if (isExpanded) {
+                // Collapse: hide all child rows
+                rows.forEach(row => {
+                    row.style.display = 'none';
+                    
+                    // Also collapse any child sections (nested levels under departments)
+                    const childCollapseMatch = row.getAttribute('onclick')?.match(/toggleSection\('([^']+)'\)/);
+                    if (childCollapseMatch) {
+                        const childCollapseId = childCollapseMatch[1];
+                        const childRows = document.querySelectorAll(`.section-${childCollapseId}`);
+                        const childIcon = document.getElementById(`icon-${childCollapseId}`);
+                        childRows.forEach(childRow => childRow.style.display = 'none');
+                        if (childIcon) childIcon.style.transform = 'rotate(0deg)';
+                    }
+                });
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                // Expand: show direct children only
+                rows.forEach(row => row.style.display = '');
+                icon.style.transform = 'rotate(90deg)';
+            }
         }
         
         function syncGroupsFromStudents() {
@@ -1081,11 +1213,12 @@
                 });
         }
         
-        function assignAdvisorToGroup(groupId, advisorId) {
-            fetch(`/api/admin/groups/${groupId}/assign-advisor`, {
+        // Assign advisor to a group by group name (for new virtual groups like E1, TC2, etc.)
+        function assignAdvisorToGroupByName(groupName, advisorId) {
+            fetch(`/api/admin/groups/assign-advisor-by-name`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ advisor_id: advisorId || null })
+                body: JSON.stringify({ group_name: groupName, advisor_id: advisorId || null })
             })
             .then(res => res.json())
             .then(data => {

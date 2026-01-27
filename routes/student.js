@@ -14,10 +14,9 @@ function isAuthenticated(req, res, next) {
 router.get('/info', isAuthenticated, async (req, res) => {
     const studentId = req.session.userId;
     const query = `
-        SELECT s.*, d.department_name, d.code as dept_code, g.group_name 
+        SELECT s.*, d.department_name, d.code as dept_code, s.student_group as group_name 
         FROM students s 
         LEFT JOIN departments d ON s.department_id = d.department_id 
-        LEFT JOIN student_groups g ON s.group_id = g.group_id
         WHERE s.student_id = $1`;
         
     try {
