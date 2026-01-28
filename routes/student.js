@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const bcrypt = require('bcryptjs');
 
 // Middleware to check if user is student
 function isAuthenticated(req, res, next) {
@@ -74,6 +75,39 @@ router.put('/update', isAuthenticated, async (req, res) => {
             [blood_group, phone, parent_phone, studentId]
         );
         res.json({ success: true, message: 'อัปเดตข้อมูลสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Change Student's Own Password
+router.put('/change-password', isAuthenticated, async (req, res) => {
+    const studentId = req.session.userId;
+    const { newPassword, confirmPassword } = req.body;
+
+    // Validate inputs
+    if (!newPassword || !confirmPassword) {
+        return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+    }
+
+    if (newPassword !== confirmPassword) {
+        return res.status(400).json({ error: 'รหัสผ่านใหม่ไม่ตรงกัน' });
+    }
+
+    if (newPassword.length < 4) {
+        return res.status(400).json({ error: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร' });
+    }
+
+    try {
+        // Hash new password and update
+        const saltRounds = 10;
+        const hash = await bcrypt.hash(newPassword, saltRounds);
+        await db.query(
+            'UPDATE students SET password = $1 WHERE student_id = $2',
+            [hash, studentId]
+        );
+
+        res.json({ success: true, message: 'เปลี่ยนรหัสผ่านสำเร็จ' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
