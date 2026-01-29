@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 </head>
 <body>
     <!-- Wave Background -->
@@ -21,6 +22,18 @@
         <div class="glass-container">
             <h2 class="mb-4 text-center">ลงทะเบียนนักศึกษาใหม่</h2>
             <form id="registerForm">
+                <!-- Profile Picture Upload -->
+                <div class="text-center mb-4">
+                    <div class="position-relative d-inline-block">
+                        <img id="profilePreview" src="img/placeholder.png" class="rounded-circle shadow" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #6c63ff;">
+                        <label for="profileImage" class="btn btn-sm btn-primary position-absolute bottom-0 start-50 translate-middle-x rounded-pill" style="cursor: pointer;">
+                            <i class="bi bi-camera-fill"></i> เลือกรูป
+                        </label>
+                        <input type="file" class="d-none" id="profileImage" name="student_image" accept="image/*" onchange="previewImage(this)">
+                    </div>
+                    <p class="text-muted small mt-2">คลิกเพื่อเลือกรูปโปรไฟล์</p>
+                </div>
+
                 <div class="row">
                     <div class="col-md-2 mb-3">
                         <label class="form-label">คำนำหน้า</label>
@@ -40,10 +53,18 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">รหัสนักศึกษา</label>
-                    <input type="text" class="form-control" name="student_code" placeholder="เช่น 6831909xxxx" required oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">รหัสนักศึกษา</label>
+                        <input type="text" class="form-control" name="student_code" placeholder="เช่น 6831909xxxx" required oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">หมายเลขบัตรประชาชน (13 หลัก)</label>
+                        <input type="text" class="form-control" name="national_id" placeholder="เช่น 1234567890123" maxlength="13" oninput="this.value = this.value.replace(/[^0-9]/g, '')" pattern="[0-9]{13}" title="กรุณากรอกหมายเลขบัตรประชาชน 13 หลัก">
+                        <div class="form-text"><span class="text-muted">กรอกเฉพาะตัวเลข 13 หลัก</span></div>
+                    </div>
                 </div>
+
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -113,6 +134,17 @@
 
     <script src="js/main.js"></script>
     <script>
+        // Preview Image Function
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profilePreview').src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         // Fetch Departments
         fetch('/api/auth/departments')
         .then(res => res.json())

@@ -298,6 +298,10 @@
                                         <label class="form-label">เบอร์โทร</label>
                                         <input type="text" class="form-control" id="editPhone">
                                     </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">หมายเลขบัตรประชาชน</label>
+                                        <input type="text" class="form-control" id="editNationalId" maxlength="13" placeholder="13 หลัก" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                    </div>
 
                                     <div class="col-12"><hr class="my-2"></div>
                                     <div class="col-12 text-muted mb-2"><strong>ข้อมูลการเรียน</strong></div>
@@ -400,6 +404,10 @@
                                     <label class="form-label text-muted small mb-0">เบอร์โทร</label>
                                     <p class="mb-2 fw-bold" id="detailPhone">-</p>
                                 </div>
+                                <div class="col-12">
+                                    <label class="form-label text-muted small mb-0">หมายเลขบัตรประชาชน</label>
+                                    <p class="mb-2 fw-bold" id="detailNationalId">-</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -471,6 +479,15 @@
 
         function handleLogout() {
             fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.href = 'index.html');
+        }
+
+        // Format National ID: X-XXXX-XXXXX-XX-X
+        function formatNationalId(id) {
+            if (!id) return '-';
+            if (id.length === 13) {
+                return `${id.charAt(0)}-${id.substring(1, 5)}-${id.substring(5, 10)}-${id.substring(10, 12)}-${id.charAt(12)}`;
+            }
+            return id;
         }
 
         async function renameDepartment() {
@@ -713,6 +730,7 @@
                     document.getElementById('editAcademicStatus').value = student.academic_status || 'ปกติ';
                     document.getElementById('editGpa').value = student.gpa || '';
                     document.getElementById('editGroupAdvisor').value = student.group_advisor || '';
+                    document.getElementById('editNationalId').value = student.national_id || '';
                     
                     // Image
                     const img = document.getElementById('editProfileImage');
@@ -768,6 +786,7 @@
                     document.getElementById('detailLevel').innerText = student.level || '-';
                     document.getElementById('detailGpa').innerText = student.gpa ? parseFloat(student.gpa).toFixed(2) : '-';
                     document.getElementById('detailPhone').innerText = student.phone || '-';
+                    document.getElementById('detailNationalId').innerText = formatNationalId(student.national_id);
                     
                     // Status Badge
                     const statusBadge = document.getElementById('detailStatusBadge');
@@ -824,7 +843,8 @@
                 parent_phone: document.getElementById('editParentPhone').value,
                 academic_status: document.getElementById('editAcademicStatus').value,
                 gpa: document.getElementById('editGpa').value || null,
-                group_advisor: document.getElementById('editGroupAdvisor').value
+                group_advisor: document.getElementById('editGroupAdvisor').value,
+                national_id: document.getElementById('editNationalId').value
             };
             
             fetch(`/api/admin/students/${id}`, {

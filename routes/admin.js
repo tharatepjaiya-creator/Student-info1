@@ -87,16 +87,16 @@ router.post('/students/:id/reset-password', async (req, res) => {
 // Update Student Details
 router.put('/students/:id', async (req, res) => {
     const { id } = req.params;
-    const { prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone, academic_status, group_advisor, department_advisor, gpa } = req.body;
+    const { prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone, academic_status, group_advisor, department_advisor, gpa, national_id } = req.body;
 
     const query = `
         UPDATE students 
         SET prefix = $1, first_name = $2, last_name = $3, level = $4, department_id = $5, dob = $6, 
             blood_group = $7, phone = $8, father_name = $9, mother_name = $10, parent_phone = $11,
-            academic_status = $12, group_advisor = $13, department_advisor = $14, gpa = $15
-        WHERE student_id = $16`;
+            academic_status = $12, group_advisor = $13, department_advisor = $14, gpa = $15, national_id = $16
+        WHERE student_id = $17`;
         
-    const params = [prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone, academic_status, group_advisor, department_advisor, gpa, id];
+    const params = [prefix, first_name, last_name, level, department_id, dob, blood_group, phone, father_name, mother_name, parent_phone, academic_status, group_advisor, department_advisor, gpa, national_id, id];
 
     try {
         await db.query(query, params);

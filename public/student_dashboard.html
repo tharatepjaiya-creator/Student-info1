@@ -252,11 +252,16 @@
                     const dobFormatted = `${d}/${m}/${beYear}`;
 
                     infoDiv.innerHTML = `
-                        <div class="text-center mb-3">
-                            <img src="${data.student_image || 'img/placeholder.png'}" class="rounded-circle shadow" style="width: 150px; height: 150px; object-fit: cover;" onerror="this.src='img/placeholder.png'">
+                        <div class="text-center mb-3 position-relative">
+                            <img id="profileImage" src="${data.student_image || 'img/placeholder.png'}" class="rounded-circle shadow" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #6c63ff;" onerror="this.src='img/placeholder.png'">
+                            <button class="btn btn-sm btn-primary position-absolute bottom-0 start-50 translate-middle-x rounded-pill" onclick="document.getElementById('uploadProfileInput').click()">
+                                <i class="bi bi-camera-fill"></i> เปลี่ยนรูป
+                            </button>
+                            <input type="file" id="uploadProfileInput" class="d-none" accept="image/*" onchange="uploadProfileImage(this)">
                         </div>
                         <p><strong>รหัสนักศึกษา:</strong> ${data.student_code}</p>
                         <p><strong>ชื่อ-นามสกุล:</strong> ${data.prefix} ${data.first_name} ${data.last_name}</p>
+                        <p><strong>หมายเลขบัตรประชาชน:</strong> ${formatNationalId(data.national_id)}</p>
                         <p><strong>ระดับชั้น:</strong> ${data.level || '-'}</p>
                         <p><strong>แผนกวิชา:</strong> ${data.department_name} (${data.dept_code})</p>
                         <p><strong>กลุ่ม:</strong> <span class="badge bg-info">${data.group_name || 'ยังไม่ระบุ'}</span></p>
@@ -333,6 +338,51 @@
                     list.innerHTML = `<p class="text-center text-muted mt-3">ยังไม่มีประกาศสำหรับแผนกของคุณ</p>`;
                 }
             });
+
+        // Format National ID (mask middle digits for privacy)
+        function formatNationalId(id) {
+            if (!id) return '-';
+            // Show first 1 and last 4 digits, mask middle: X-XXXX-XXXXX-XX-X
+            if (id.length === 13) {
+                return `${id.charAt(0)}-${id.substring(1, 5)}-${id.substring(5, 10)}-${id.substring(10, 12)}-${id.charAt(12)}`;
+            }
+            return id;
+        }
+
+        // Upload Profile Image
+        function uploadProfileImage(input) {
+            if (input.files && input.files[0]) {
+                const formData = new FormData();
+                formData.append('student_image', input.files[0]);
+
+                // Show loading state
+                const btn = input.previousElementSibling;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังอัปโหลด...';
+                btn.disabled = true;
+
+                fetch('/api/student/upload-image', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ อัปโหลดรูปโปรไฟล์สำเร็จ!');
+                        loadStudentInfo(); // Reload to show new image
+                    } else {
+                        alert('❌ เกิดข้อผิดพลาด: ' + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert('❌ เกิดข้อผิดพลาด: ' + err.message);
+                })
+                .finally(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+            }
+        }
     </script>
 </body>
 </html>

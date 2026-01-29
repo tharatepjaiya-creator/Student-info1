@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database');
 const bcrypt = require('bcryptjs');
+const { upload } = require('./cloudinary');
 
 // Middleware to check if user is student
 function isAuthenticated(req, res, next) {
@@ -108,6 +109,26 @@ router.put('/change-password', isAuthenticated, async (req, res) => {
         );
 
         res.json({ success: true, message: 'เปลี่ยนรหัสผ่านสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Upload/Update Student's Own Profile Image
+router.post('/upload-image', isAuthenticated, upload.single('student_image'), async (req, res) => {
+    const studentId = req.session.userId;
+    const student_image = req.file ? req.file.path : null; // Cloudinary URL
+
+    if (!student_image) {
+        return res.status(400).json({ error: 'กรุณาเลือกไฟล์รูปภาพ' });
+    }
+
+    try {
+        await db.query(
+            'UPDATE students SET student_image = $1 WHERE student_id = $2',
+            [student_image, studentId]
+        );
+        res.json({ success: true, message: 'อัปโหลดรูปโปรไฟล์สำเร็จ', image_url: student_image });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

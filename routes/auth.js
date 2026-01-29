@@ -37,7 +37,7 @@ router.get('/public-stats', async (req, res) => {
 
 // Register Student
 router.post('/register', upload.single('student_image'), async (req, res) => {
-    const { prefix, first_name, last_name, dob, phone, department_id, student_code, level, blood_group, father_name, mother_name, parent_phone } = req.body;
+    const { prefix, first_name, last_name, dob, phone, department_id, student_code, level, blood_group, father_name, mother_name, parent_phone, national_id } = req.body;
     const student_image = req.file ? req.file.path : null; // Cloudinary URL
     
     if (!first_name || !last_name || !dob || !department_id || !student_code || !level) {
@@ -54,11 +54,11 @@ router.post('/register', upload.single('student_image'), async (req, res) => {
         const hash = await bcrypt.hash(passwordRaw, saltRounds);
         
         const query = `
-            INSERT INTO students (prefix, first_name, last_name, dob, phone, department_id, student_code, password, level, blood_group, student_image, father_name, mother_name, parent_phone) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            INSERT INTO students (prefix, first_name, last_name, dob, phone, department_id, student_code, password, level, blood_group, student_image, father_name, mother_name, parent_phone, national_id) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             RETURNING student_code
         `;
-        const values = [prefix, first_name, last_name, dob, phone, department_id, student_code, hash, level, blood_group, student_image, father_name, mother_name, parent_phone];
+        const values = [prefix, first_name, last_name, dob, phone, department_id, student_code, hash, level, blood_group, student_image, father_name, mother_name, parent_phone, national_id];
         
         await db.query(query, values);
         res.json({ success: true, message: 'ลงทะเบียนสำเร็จ', student_code: student_code });
