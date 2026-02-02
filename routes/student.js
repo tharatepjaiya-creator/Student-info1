@@ -134,5 +134,86 @@ router.post('/upload-image', isAuthenticated, upload.single('student_image'), as
     }
 });
 
+// ============================
+// ATTENDANCE ROUTES
+// ============================
+
+// Get Student's Own Attendance Records
+router.get('/attendance', isAuthenticated, async (req, res) => {
+    const studentId = req.session.userId;
+    const { semester } = req.query;
+    
+    try {
+        let query = `
+            SELECT a.*, t.full_name as teacher_name
+            FROM attendance_records a
+            LEFT JOIN teacher_advisors t ON a.teacher_id = t.teacher_id
+            WHERE a.student_id = $1
+        `;
+        const params = [studentId];
+        
+        if (semester) {
+            query += ` AND a.semester = $2`;
+            params.push(semester);
+        }
+        
+        query += ` ORDER BY a.check_date DESC`;
+        
+        const result = await db.query(query, params);
+        res.json(result.rows);
+        
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get Student's Attendance Summary
+router.get('/attendance/summary', isAuthenticated, async (req, res) => {
+    const studentId = req.session.userId;
+    
+    try {
+        // Get student's level to determine max weeks
+        const studentResult = await db.query(
+            'SELECT level FROM students WHERE student_id = $1',
+            [studentId]
+        );
+        const student = studentResult.rows[0];
+        const maxWeeks = student && student.level && student.level.startsWith('ปวส') ? 15 : 18;
+        
+        // Get attendance summary
+        const result = await db.query(`
+            SELECT 
+                check_type,
+                COUNT(*) as total_checks,
+                COUNT(CASE WHEN is_present THEN 1 END) as present_count
+            FROM attendance_records
+            WHERE student_id = $1
+            GROUP BY check_type
+        `, [studentId]);
+        
+        const summary = {
+            wednesday: { present: 0, total: 0, maxWeeks, percentage: 0 },
+            thursday: { present: 0, total: 0, maxWeeks, percentage: 0 }
+        };
+        
+        result.rows.forEach(row => {
+            if (summary[row.check_type]) {
+                summary[row.check_type].present = parseInt(row.present_count);
+                summary[row.check_type].total = parseInt(row.total_checks);
+                summary[row.check_type].percentage = Math.round((parseInt(row.present_count) / maxWeeks) * 100);
+            }
+        });
+        
+        res.json({
+            summary,
+            level: student?.level || 'ปวช.',
+            maxWeeks
+        });
+        
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
 

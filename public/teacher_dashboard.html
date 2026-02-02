@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แดชบอร์ดครูที่ปรึกษา</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Wave Background -->
+    <div class="wave-container">
+        <svg class="wave-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path fill="#ffffff" d="M0,160 C360,260 720,60 1080,160 C1260,210 1350,180 1440,160 L1440,320 L0,320 Z"></path>
+        </svg>
+    </div>
+
+    <div class="bg-shape shape-1" style="background: #28a745;"></div>
+    <div class="bg-shape shape-2"></div>
+
+    <nav class="navbar navbar-expand-lg glass-nav mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="bi bi-person-workspace me-2"></i>ระบบครูที่ปรึกษา
+            </a>
+            <div class="d-flex align-items-center gap-2">
+                <span class="navbar-text me-3" id="teacherNameNav">ครูที่ปรึกษา</span>
+                <button class="btn btn-outline-danger btn-sm" onclick="handleLogout()">ออกจากระบบ</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <!-- Left Column: Teacher Profile -->
+            <div class="col-md-4 mb-4">
+                <div class="glass-card">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                        <h4 class="mb-0">ข้อมูลส่วนตัว</h4>
+                        <div class="d-flex flex-wrap gap-1">
+                            <button class="btn btn-sm btn-outline-primary" onclick="openEditProfileModal()">
+                                <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">แก้ไข</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="teacherInfo">
+                        <p class="text-center">กำลังโหลด...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Stats & Groups -->
+            <div class="col-md-8">
+                <div class="glass-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0"><i class="bi bi-bar-chart-fill me-2"></i>สรุปข้อมูล</h5>
+                        <button class="btn btn-success btn-sm" onclick="openAttendanceModal()">
+                            <i class="bi bi-check2-square me-1"></i>เช็คชื่อ
+                        </button>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <i class="bi bi-people-fill text-success" style="font-size: 2rem;"></i>
+                            <h5 class="mt-2 mb-0">นักศึกษาในกลุ่ม</h5>
+                            <h2 id="studentCount" class="text-success fw-bold">-</h2>
+                        </div>
+                        <div class="col-6">
+                            <i class="bi bi-diagram-3 text-primary" style="font-size: 2rem;"></i>
+                            <h5 class="mt-2 mb-0">กลุ่มที่รับผิดชอบ</h5>
+                            <div id="assignedGroups" class="mt-2">
+                                <span class="text-muted">กำลังโหลด...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Students List -->
+                <div class="glass-card">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                        <h5 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>รายชื่อนักศึกษา</h5>
+                        <input type="text" class="form-control" id="studentSearch" placeholder="ค้นหา..." style="max-width: 200px;">
+                    </div>
+                    
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover align-middle table-sm">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>รหัส</th>
+                                    <th>ชื่อ-นามสกุล</th>
+                                    <th>กลุ่ม</th>
+                                    <th>GPA</th>
+                                    <th>สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsTableBody">
+                                <tr><td colspan="5" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal fade" id="editProfileModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square"></i> แก้ไขข้อมูลส่วนตัว</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editProfileForm">
+                        <div class="mb-3">
+                            <label class="form-label">เบอร์โทรศัพท์</label>
+                            <input type="text" class="form-control" id="editPhone" placeholder="0XX-XXX-XXXX">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">อีเมล</label>
+                            <input type="email" class="form-control" id="editEmail" placeholder="example@email.com">
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> บันทึกข้อมูล
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Detail Modal -->
+    <div class="modal fade" id="studentDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-person-badge"></i> รายละเอียดนักศึกษา</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <img id="detailProfileImage" src="img/placeholder.png" class="rounded-circle shadow" style="width: 150px; height: 150px; object-fit: cover;">
+                            <h4 class="mt-3 mb-0" id="detailFullName">-</h4>
+                            <p class="text-muted" id="detailStudentCode">-</p>
+                            <span id="detailStatusBadge" class="badge bg-success">ปกติ</span>
+                            <span id="detailGroupBadge" class="badge bg-info ms-1">กลุ่ม -</span>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">แผนกวิชา</label>
+                                    <p class="mb-2 fw-bold" id="detailDepartment">-</p>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">ระดับชั้น</label>
+                                    <p class="mb-2 fw-bold" id="detailLevel">-</p>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">เกรดเฉลี่ย (GPA)</label>
+                                    <p class="mb-2 fw-bold" id="detailGpa">-</p>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">เบอร์โทร</label>
+                                    <p class="mb-2 fw-bold" id="detailPhone">-</p>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">วันเกิด</label>
+                                    <p class="mb-2 fw-bold" id="detailDob">-</p>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-0">กรุ๊ปเลือด</label>
+                                    <p class="mb-2 fw-bold" id="detailBlood">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Parent Info -->
+                    <h6 class="text-muted mb-3"><i class="bi bi-house-heart-fill"></i> ข้อมูลผู้ปกครอง</h6>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-0">ชื่อบิดา</label>
+                            <p class="mb-1" id="detailFather">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-0">ชื่อมารดา</label>
+                            <p class="mb-1" id="detailMother">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-0">เบอร์โทรผู้ปกครอง</label>
+                            <p class="mb-1" id="detailParentPhone">-</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Check Modal -->
+    <div class="modal fade" id="attendanceModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-check2-square me-2"></i>เช็คชื่อเข้าแถว</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3" id="attendanceInfo">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap">
+                            <div>
+                                <strong id="attendanceTypeLabel">กำลังโหลด...</strong>
+                                <span class="ms-2 text-muted" id="attendanceDate"></span>
+                            </div>
+                            <span id="attendanceTimeStatus" class="badge bg-secondary">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="selectAllAttendance" onclick="toggleAllAttendance()">
+                            <label class="form-check-label" for="selectAllAttendance">เลือกทั้งหมด</label>
+                        </div>
+                        <small class="text-muted"><span id="presentCount">0</span> / <span id="totalStudentCount">0</span> คน</small>
+                    </div>
+                    
+                    <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 50px;">เข้าแถว</th>
+                                    <th>รหัส</th>
+                                    <th>ชื่อ-นามสกุล</th>
+                                    <th>กลุ่ม</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTableBody">
+                                <tr><td colspan="4" class="text-center text-muted py-4">กำลังโหลด...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-success" onclick="saveAttendance()">
+                        <i class="bi bi-save me-1"></i>บันทึกการเช็คชื่อ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        let allStudents = [];
+        let currentTeacherData = null;
+        let studentDetailModal;
+        let editProfileModal;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            studentDetailModal = new bootstrap.Modal(document.getElementById('studentDetailModal'));
+            editProfileModal = new bootstrap.Modal(document.getElementById('editProfileModal'));
+            loadTeacherProfile();
+            loadStats();
+            loadStudents();
+        });
+
+        function handleLogout() {
+            fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.href = 'index.html');
+        }
+
+        function loadTeacherProfile() {
+            fetch('/api/teacher/profile')
+                .then(res => {
+                    if (res.status === 401) window.location.href = 'index.html';
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.error) return;
+                    currentTeacherData = data;
+                    document.getElementById('teacherNameNav').innerText = data.full_name || 'ครูที่ปรึกษา';
+                    
+                    const infoDiv = document.getElementById('teacherInfo');
+                    infoDiv.innerHTML = `
+                        <div class="text-center mb-3 position-relative">
+                            <img id="profileImage" src="${data.teacher_image || 'img/placeholder.png'}" class="rounded-circle shadow" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #28a745;" onerror="this.src='img/placeholder.png'">
+                            <button class="btn btn-sm btn-success position-absolute bottom-0 start-50 translate-middle-x rounded-pill" onclick="document.getElementById('uploadProfileInput').click()">
+                                <i class="bi bi-camera-fill"></i> เปลี่ยนรูป
+                            </button>
+                            <input type="file" id="uploadProfileInput" class="d-none" accept="image/*" onchange="uploadProfileImage(this)">
+                        </div>
+                        <p><strong>ชื่อ-นามสกุล:</strong> ${data.full_name}</p>
+                        <p><strong>แผนกวิชา:</strong> ${data.department_name || '-'}</p>
+                        <p><strong>เบอร์โทรศัพท์:</strong> ${data.phone || '-'}</p>
+                        <p><strong>อีเมล:</strong> ${data.email || '-'}</p>
+                        <hr>
+                        <p class="text-muted mb-2"><strong>กลุ่มที่รับผิดชอบ</strong></p>
+                        <div id="profileGroups">
+                            ${data.assigned_groups ? data.assigned_groups.split(',').map(g => `<span class="badge bg-success me-1 mb-1">${g.trim()}</span>`).join('') : '<span class="text-muted">ยังไม่ได้รับมอบหมาย</span>'}
+                        </div>
+                    `;
+                });
+        }
+
+        function loadStats() {
+            fetch('/api/teacher/stats')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) return;
+                    document.getElementById('studentCount').innerText = data.studentCount || 0;
+                    
+                    const groupsDiv = document.getElementById('assignedGroups');
+                    if (data.groups && data.groups.length > 0) {
+                        groupsDiv.innerHTML = data.groups.map(g => 
+                            `<span class="badge bg-success me-1 mb-1">${g}</span>`
+                        ).join('');
+                    } else {
+                        groupsDiv.innerHTML = '<span class="text-muted">ยังไม่ได้รับมอบหมาย</span>';
+                    }
+                });
+        }
+
+        function loadStudents() {
+            fetch('/api/teacher/students')
+                .then(res => res.json())
+                .then(data => {
+                    allStudents = data;
+                    renderStudents();
+                });
+        }
+
+        function renderStudents() {
+            const search = document.getElementById('studentSearch').value.toLowerCase();
+            const tbody = document.getElementById('studentsTableBody');
+            
+            const filtered = allStudents.filter(student => {
+                const name = `${student.first_name} ${student.last_name}`.toLowerCase();
+                return name.includes(search) || (student.student_code && student.student_code.includes(search));
+            });
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">ไม่พบข้อมูลนักศึกษา</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = filtered.map(student => {
+                // Status Badge
+                let statusBadge = '';
+                const status = student.academic_status || 'ปกติ';
+                if (status === 'วิทยาทัณฑ์') {
+                    statusBadge = `<span class="badge bg-warning text-dark">${status}</span>`;
+                } else if (status === 'พ้นสภาพ') {
+                    statusBadge = `<span class="badge bg-danger">${status}</span>`;
+                } else {
+                    statusBadge = `<span class="badge bg-success">${status}</span>`;
+                }
+                
+                const gpaDisplay = student.gpa ? parseFloat(student.gpa).toFixed(2) : '-';
+                
+                return `
+                    <tr style="cursor: pointer;" onclick="openStudentDetail('${student.student_id}')">
+                        <td class="small">${student.student_code}</td>
+                        <td>${student.prefix || ''}${student.first_name} ${student.last_name}</td>
+                        <td><span class="badge bg-info">${student.student_group || '-'}</span></td>
+                        <td>${gpaDisplay}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('studentSearch').addEventListener('input', renderStudents);
+
+        function openStudentDetail(studentId) {
+            const student = allStudents.find(s => s.student_id == studentId);
+            if (!student) return;
+            
+            document.getElementById('detailFullName').innerText = `${student.prefix || ''}${student.first_name} ${student.last_name}`;
+            document.getElementById('detailStudentCode').innerText = student.student_code;
+            document.getElementById('detailDepartment').innerText = student.department_name || '-';
+            document.getElementById('detailLevel').innerText = student.level || '-';
+            document.getElementById('detailGpa').innerText = student.gpa ? parseFloat(student.gpa).toFixed(2) : '-';
+            document.getElementById('detailPhone').innerText = student.phone || '-';
+            document.getElementById('detailDob').innerText = formatThaiDate(student.dob);
+            document.getElementById('detailBlood').innerText = student.blood_group || '-';
+            
+            // Status Badge
+            const statusBadge = document.getElementById('detailStatusBadge');
+            const status = student.academic_status || 'ปกติ';
+            statusBadge.innerText = status;
+            statusBadge.className = 'badge';
+            if (status === 'วิทยาทัณฑ์') {
+                statusBadge.classList.add('bg-warning', 'text-dark');
+            } else if (status === 'พ้นสภาพ') {
+                statusBadge.classList.add('bg-danger');
+            } else {
+                statusBadge.classList.add('bg-success');
+            }
+            
+            document.getElementById('detailGroupBadge').innerText = student.student_group ? `กลุ่ม ${student.student_group}` : 'ไม่มีกลุ่ม';
+            
+            // Parent Info
+            document.getElementById('detailFather').innerText = student.father_name || '-';
+            document.getElementById('detailMother').innerText = student.mother_name || '-';
+            document.getElementById('detailParentPhone').innerText = student.parent_phone || '-';
+            
+            // Image
+            const img = document.getElementById('detailProfileImage');
+            img.src = student.student_image || 'img/placeholder.png';
+            img.onerror = () => { img.src = 'img/placeholder.png'; };
+            
+            studentDetailModal.show();
+        }
+
+        function formatThaiDate(dateStr) {
+            if (!dateStr) return '-';
+            const [year, month, day] = dateStr.split('-');
+            const beYear = parseInt(year) + 543;
+            return `${day}/${month}/${beYear}`;
+        }
+
+        // Upload Profile Image
+        function uploadProfileImage(input) {
+            if (input.files && input.files[0]) {
+                const formData = new FormData();
+                formData.append('teacher_image', input.files[0]);
+
+                // Show loading state
+                const btn = input.previousElementSibling;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังอัปโหลด...';
+                btn.disabled = true;
+
+                fetch('/api/teacher/upload-image', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ อัปโหลดรูปโปรไฟล์สำเร็จ!');
+                        loadTeacherProfile(); // Reload to show new image
+                    } else {
+                        alert('❌ เกิดข้อผิดพลาด: ' + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert('❌ เกิดข้อผิดพลาด: ' + err.message);
+                })
+                .finally(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+            }
+        }
+
+        // Edit Profile Modal
+        function openEditProfileModal() {
+            if (currentTeacherData) {
+                document.getElementById('editPhone').value = currentTeacherData.phone || '';
+                document.getElementById('editEmail').value = currentTeacherData.email || '';
+                editProfileModal.show();
+            }
+        }
+
+        document.getElementById('editProfileForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const body = {
+                phone: document.getElementById('editPhone').value,
+                email: document.getElementById('editEmail').value
+            };
+            
+            fetch('/api/teacher/update-profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ บันทึกข้อมูลสำเร็จ!');
+                    editProfileModal.hide();
+                    loadTeacherProfile(); // Reload info
+                } else {
+                    alert('❌ เกิดข้อผิดพลาด: ' + data.error);
+                }
+            });
+        });
+
+        // ============================
+        // ATTENDANCE FUNCTIONS
+        // ============================
+        let attendanceModal;
+        let currentAttendanceData = null;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            attendanceModal = new bootstrap.Modal(document.getElementById('attendanceModal'));
+        });
+        
+        function openAttendanceModal() {
+            fetch('/api/teacher/attendance/today')
+                .then(res => res.json())
+                .then(data => {
+                    currentAttendanceData = data;
+                    
+                    // Update info section
+                    const typeLabel = document.getElementById('attendanceTypeLabel');
+                    const dateEl = document.getElementById('attendanceDate');
+                    const timeStatus = document.getElementById('attendanceTimeStatus');
+                    const infoBox = document.getElementById('attendanceInfo');
+                    
+                    if (!data.checkType) {
+                        typeLabel.innerText = 'ไม่ใช่วันเช็คชื่อ';
+                        dateEl.innerText = '(วันพุธ/พฤหัสบดีเท่านั้น)';
+                        timeStatus.innerText = 'ไม่สามารถเช็คได้';
+                        timeStatus.className = 'badge bg-secondary';
+                        infoBox.className = 'alert alert-warning mb-3';
+                    } else {
+                        typeLabel.innerText = data.checkTypeLabel;
+                        dateEl.innerText = new Date(data.today).toLocaleDateString('th-TH', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                        
+                        if (data.canCheck) {
+                            timeStatus.innerText = '🟢 เปิดให้เช็ค (7:40-8:10)';
+                            timeStatus.className = 'badge bg-success';
+                            infoBox.className = 'alert alert-success mb-3';
+                        } else {
+                            timeStatus.innerText = '🔴 นอกเวลาเช็ค';
+                            timeStatus.className = 'badge bg-danger';
+                            infoBox.className = 'alert alert-warning mb-3';
+                        }
+                    }
+                    
+                    // Populate student table
+                    const tbody = document.getElementById('attendanceTableBody');
+                    document.getElementById('totalStudentCount').innerText = data.students.length;
+                    
+                    if (data.students.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">ไม่พบนักศึกษาในกลุ่ม</td></tr>';
+                    } else {
+                        tbody.innerHTML = data.students.map(s => `
+                            <tr>
+                                <td class="text-center">
+                                    <input class="form-check-input attendance-check" type="checkbox" 
+                                           data-student-id="${s.student_id}" 
+                                           ${s.is_present ? 'checked' : ''}
+                                           onchange="updatePresentCount()">
+                                </td>
+                                <td class="small">${s.student_code}</td>
+                                <td>${s.prefix || ''}${s.first_name} ${s.last_name}</td>
+                                <td><span class="badge bg-info">${s.student_group || '-'}</span></td>
+                            </tr>
+                        `).join('');
+                    }
+                    
+                    updatePresentCount();
+                    attendanceModal.show();
+                })
+                .catch(err => {
+                    alert('❌ ไม่สามารถโหลดข้อมูลได้: ' + err.message);
+                });
+        }
+        
+        function toggleAllAttendance() {
+            const isChecked = document.getElementById('selectAllAttendance').checked;
+            document.querySelectorAll('.attendance-check').forEach(cb => {
+                cb.checked = isChecked;
+            });
+            updatePresentCount();
+        }
+        
+        function updatePresentCount() {
+            const checkboxes = document.querySelectorAll('.attendance-check');
+            const presentCount = [...checkboxes].filter(cb => cb.checked).length;
+            document.getElementById('presentCount').innerText = presentCount;
+            
+            // Update select all checkbox state
+            const selectAll = document.getElementById('selectAllAttendance');
+            selectAll.checked = presentCount === checkboxes.length && checkboxes.length > 0;
+            selectAll.indeterminate = presentCount > 0 && presentCount < checkboxes.length;
+        }
+        
+        function saveAttendance() {
+            if (!currentAttendanceData || !currentAttendanceData.checkType) {
+                alert('❌ ไม่สามารถบันทึกได้: ไม่ใช่วันเช็คชื่อ');
+                return;
+            }
+            
+            const checkboxes = document.querySelectorAll('.attendance-check');
+            const attendanceData = [...checkboxes].map(cb => ({
+                student_id: parseInt(cb.dataset.studentId),
+                is_present: cb.checked
+            }));
+            
+            const body = {
+                attendanceData: attendanceData,
+                checkDate: currentAttendanceData.today,
+                checkType: currentAttendanceData.checkType,
+                weekNumber: 1, // TODO: Calculate from semester start
+                semester: null
+            };
+            
+            fetch('/api/teacher/attendance/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    attendanceModal.hide();
+                } else {
+                    alert('❌ เกิดข้อผิดพลาด: ' + data.error);
+                }
+            })
+            .catch(err => {
+                alert('❌ ไม่สามารถบันทึกได้: ' + err.message);
+            });
+        }
+
+    </script>
+</body>
+</html>

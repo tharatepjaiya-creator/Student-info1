@@ -43,6 +43,9 @@
                         <button class="nav-link active" id="pills-student-tab" data-bs-toggle="pill" data-bs-target="#pills-student" type="button" role="tab" aria-selected="true">นักเรียน / นักศึกษา</button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pills-teacher-tab" data-bs-toggle="pill" data-bs-target="#pills-teacher" type="button" role="tab" aria-selected="false">ครูที่ปรึกษา</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="pills-admin-tab" data-bs-toggle="pill" data-bs-target="#pills-admin" type="button" role="tab" aria-selected="false">ผู้ดูแลระบบ</button>
                     </li>
                 </ul>
@@ -67,6 +70,29 @@
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary">เข้าสู่ระบบ</button>
                                 <a href="register.html" class="btn btn-outline-light text-dark">ลงทะเบียนนักศึกษาใหม่</a>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Teacher Login -->
+                    <div class="tab-pane fade" id="pills-teacher" role="tabpanel">
+                        <form id="teacherLoginForm">
+                            <div class="mb-3">
+                                <label class="form-label">ชื่อผู้ใช้ (Username)</label>
+                                <input type="text" class="form-control" name="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">รหัสผ่าน (Password)</label>
+                                <div class="position-relative">
+                                    <input type="password" class="form-control" name="password" id="teacherPassword" required style="padding-right: 40px;">
+                                    <span class="position-absolute top-50 end-0 translate-middle-y me-3" onclick="togglePassword('teacherPassword', 'toggleIconTeacher')" style="cursor: pointer;">
+                                        <i class="bi bi-eye" id="toggleIconTeacher"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">เข้าสู่ระบบครูที่ปรึกษา</button>
+                                <a href="register_teacher.html" class="btn btn-outline-light text-dark">ลงทะเบียนครูที่ปรึกษาใหม่</a>
                             </div>
                         </form>
                     </div>
@@ -126,36 +152,203 @@
 
     <!-- Welcome Popup Modal -->
     <div class="modal fade" id="welcomeModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content glass-card border-0 shadow-lg">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="background: #ffffff; color: #333; border-radius: 20px;">
                 <div class="modal-header border-0 bg-primary text-white" style="border-radius: 20px 20px 0 0;">
                     <h4 class="modal-title w-100 text-center">
                         <i class="bi bi-info-circle-fill me-2"></i>เว็บไซต์นี้สร้างขึ้นเพื่อการศึกษา
                     </h4>
                 </div>
-                <div class="modal-body p-4 text-center">
-                    <div class="mb-4">
-                        <i class="bi bi-mortarboard-fill text-primary" style="font-size: 4rem;"></i>
-                    </div>
-                    <p class="fs-5 text-muted mb-4">นายธราเทพ ใจยา ปวส.1 TC กลุ่ม 1 เลขที่ 16 </p>
-                    <p class="fs-5 text-muted mb-4">ตัวอย่างทดสอบ</p>
+                <div class="modal-body p-4">
+                    <!-- Nav Tabs -->
+                    <ul class="nav nav-pills nav-fill mb-4" id="infoTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="intro-tab" data-bs-toggle="pill" data-bs-target="#intro-pane" type="button" role="tab">
+                                <i class="bi bi-house-door"></i> แนะนำ
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tech-tab" data-bs-toggle="pill" data-bs-target="#tech-pane" type="button" role="tab">
+                                <i class="bi bi-code-slash"></i> เทคโนโลยี
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="database-tab" data-bs-toggle="pill" data-bs-target="#database-pane" type="button" role="tab">
+                                <i class="bi bi-database"></i> Database
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="features-tab" data-bs-toggle="pill" data-bs-target="#features-pane" type="button" role="tab">
+                                <i class="bi bi-gear"></i> ฟีเจอร์
+                            </button>
+                        </li>
+                    </ul>
                     
-                    
-                    <div class="bg-light rounded-3 p-3 mb-3">
-                        <h6 class="text-dark mb-2"><i class="bi bi-person-gear"></i> Admin Login</h6>
-                        <div class="row">
-                            <div class="col-6 text-end">
-                                <small class="text-muted">Username:</small>
-                                <span class="badge bg-dark ms-1">admin</span>
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="infoTabContent" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Intro Tab -->
+                        <div class="tab-pane fade show active" id="intro-pane" role="tabpanel">
+                            <div class="text-center">
+                                <i class="bi bi-mortarboard-fill text-primary" style="font-size: 4rem;"></i>
+                                <p class="fs-5 text-dark mt-3">นายธราเทพ ใจยา ปวส.1 TC กลุ่ม 1 เลขที่ 16</p>
+                                <p class="text-muted">Student Info Website</p>
+                                
+                                <div class="bg-light rounded-3 p-3 mt-4 border">
+                                    <h6 class="text-primary mb-2"><i class="bi bi-person-gear"></i> Admin Login</h6>
+                                    <div class="row">
+                                        <div class="col-6 text-end">
+                                            <small class="text-muted">Username:</small>
+                                            <span class="badge bg-dark ms-1">admin</span>
+                                        </div>
+                                        <div class="col-6 text-start">
+                                            <small class="text-muted">Password:</small>
+                                            <span class="badge bg-dark ms-1">admin</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-6 text-start">
-                                <small class="text-muted">Password:</small>
-                                <span class="badge bg-dark ms-1">admin</span>
+                        </div>
+                        
+                        <!-- Technology Tab -->
+                        <div class="tab-pane fade" id="tech-pane" role="tabpanel">
+                            <h5 class="text-primary mb-3"><i class="bi bi-cpu"></i> เทคโนโลยีที่ใช้พัฒนา</h5>
+                            <table class="table table-striped table-bordered table-sm">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Technology</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>Backend</td><td>Node.js + Express.js</td></tr>
+                                    <tr><td>Database</td><td>PostgreSQL (ผ่าน Neon)</td></tr>
+                                    <tr><td>ORM/Driver</td><td>pg (node-postgres)</td></tr>
+                                    <tr><td>Authentication</td><td>express-session + connect-pg-simple</td></tr>
+                                    <tr><td>Password Hashing</td><td>bcryptjs</td></tr>
+                                    <tr><td>File Upload</td><td>Multer + Cloudinary</td></tr>
+                                    <tr><td>Environment</td><td>dotenv</td></tr>
+                                    <tr><td>Deployment</td><td>Vercel</td></tr>
+                                    <tr><td>Frontend</td><td>HTML, CSS, JavaScript, Bootstrap 5</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Database Tab -->
+                        <div class="tab-pane fade" id="database-pane" role="tabpanel">
+                            <h5 class="text-info mb-3"><i class="bi bi-database-fill"></i> Database Tables</h5>
+                            <table class="table table-striped table-bordered table-sm">
+                                <thead class="table-info">
+                                    <tr>
+                                        <th>Table</th>
+                                        <th>คำอธิบาย</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td><code class="text-primary">departments</code></td><td>แผนกวิชา (10 แผนก)</td></tr>
+                                    <tr><td><code class="text-primary">students</code></td><td>ข้อมูลนักศึกษา</td></tr>
+                                    <tr><td><code class="text-primary">admin_users</code></td><td>ผู้ดูแลระบบ</td></tr>
+                                    <tr><td><code class="text-primary">teacher_advisors</code></td><td>ครูที่ปรึกษา</td></tr>
+                                    <tr><td><code class="text-primary">announcements</code></td><td>ประกาศ</td></tr>
+                                    <tr><td><code class="text-primary">attendance_records</code></td><td>บันทึกการเช็คชื่อ</td></tr>
+                                    <tr><td><code class="text-primary">semesters</code></td><td>ภาคเรียน</td></tr>
+                                    <tr><td><code class="text-primary">session</code></td><td>Session ของ user</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Features Tab -->
+                        <div class="tab-pane fade" id="features-pane" role="tabpanel">
+                            <h5 class="text-success mb-3"><i class="bi bi-check2-circle"></i> ฟีเจอร์หลักของระบบ</h5>
+                            <div class="accordion accordion-flush" id="featuresAccordion">
+                                <div class="accordion-item border">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#auth-collapse">
+                                            1. ระบบ Authentication
+                                        </button>
+                                    </h2>
+                                    <div id="auth-collapse" class="accordion-collapse collapse" data-bs-parent="#featuresAccordion">
+                                        <div class="accordion-body small">
+                                            <ul class="mb-0">
+                                                <li>ล็อกอิน 3 ประเภท: นักศึกษา, ครู, Admin</li>
+                                                <li>รหัสผ่านนักศึกษาเริ่มต้น = วันเกิด (DD/MM/YYYY พ.ศ.)</li>
+                                                <li>ครูต้องรอ Admin อนุมัติก่อนเข้าใช้งาน</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item border">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#student-collapse">
+                                            2. ระบบนักศึกษา
+                                        </button>
+                                    </h2>
+                                    <div id="student-collapse" class="accordion-collapse collapse" data-bs-parent="#featuresAccordion">
+                                        <div class="accordion-body small">
+                                            <ul class="mb-0">
+                                                <li>ดูข้อมูลส่วนตัว, แก้ไขข้อมูล</li>
+                                                <li>เปลี่ยนรหัสผ่าน, อัพโหลดรูปโปรไฟล์</li>
+                                                <li>ดูประกาศจากแผนก</li>
+                                                <li>ดูประวัติ/สถิติเข้าแถว</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item border">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#teacher-collapse">
+                                            3. ระบบครูที่ปรึกษา
+                                        </button>
+                                    </h2>
+                                    <div id="teacher-collapse" class="accordion-collapse collapse" data-bs-parent="#featuresAccordion">
+                                        <div class="accordion-body small">
+                                            <ul class="mb-0">
+                                                <li>ดูรายชื่อนักศึกษาในกลุ่ม</li>
+                                                <li>เช็คชื่อเข้าแถว (พุธ/พฤหัส 7:40-8:10)</li>
+                                                <li>ดูประวัติเข้าแถวนักศึกษา</li>
+                                                <li>อัพโหลดรูปโปรไฟล์</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item border">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#admin-collapse">
+                                            4. ระบบ Admin
+                                        </button>
+                                    </h2>
+                                    <div id="admin-collapse" class="accordion-collapse collapse" data-bs-parent="#featuresAccordion">
+                                        <div class="accordion-body small">
+                                            <ul class="mb-0">
+                                                <li>จัดการนักศึกษา, แผนก, ประกาศ</li>
+                                                <li>จัดการครูที่ปรึกษา (อนุมัติ/กำหนดกลุ่ม)</li>
+                                                <li>จัดการกลุ่มนักศึกษา (แบบ Virtual)</li>
+                                                <li>ดูสถิติต่างๆ</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item border">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#attendance-collapse">
+                                            5. ระบบเช็คชื่อเข้าแถว
+                                        </button>
+                                    </h2>
+                                    <div id="attendance-collapse" class="accordion-collapse collapse" data-bs-parent="#featuresAccordion">
+                                        <div class="accordion-body small">
+                                            <ul class="mb-0">
+                                                <li>เช็คได้เฉพาะวันพุธ (หน้าเสาธง) และพฤหัส (หน้าแผนก)</li>
+                                                <li>เวลา 7:40-8:10 น.</li>
+                                                <li>ปวช. = 18 สัปดาห์, ปวส. = 15 สัปดาห์</li>
+                                                <li>คำนวณ % การเข้าแถว</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 justify-content-center pb-4">
+                <div class="modal-footer border-0 justify-content-center pb-4" style="background: #ffffff;">
                     <button type="button" class="btn btn-primary btn-lg px-5 rounded-pill shadow" data-bs-dismiss="modal">
                         <i class="bi bi-hand-thumbs-up-fill me-2"></i>เข้าใจแล้ว
                     </button>
@@ -270,6 +463,9 @@
 
         document.getElementById('studentLoginForm').addEventListener('submit', (e) => {
             handleFormSubmit(e, '/api/auth/login/student');
+        });
+        document.getElementById('teacherLoginForm').addEventListener('submit', (e) => {
+            handleFormSubmit(e, '/api/auth/login/teacher');
         });
         document.getElementById('adminLoginForm').addEventListener('submit', (e) => {
             handleFormSubmit(e, '/api/auth/login/admin');

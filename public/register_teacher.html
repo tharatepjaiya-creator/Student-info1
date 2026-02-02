@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ลงทะเบียนครูที่ปรึกษา - ระบบสารสนเทศนักศึกษา</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <!-- Wave Background -->
+    <div class="wave-container">
+        <svg class="wave-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path fill="#ffffff" d="M0,160 C360,260 720,60 1080,160 C1260,210 1350,180 1440,160 L1440,320 L0,320 Z"></path>
+        </svg>
+    </div>
+
+    <div class="bg-shape shape-1"></div>
+    <div class="container mt-5">
+        <div class="glass-container" style="max-width: 600px; margin: 0 auto;">
+            <div class="text-center mb-4">
+                <i class="bi bi-person-workspace text-primary" style="font-size: 4rem;"></i>
+                <h2 class="mt-2">ลงทะเบียนครูที่ปรึกษา</h2>
+                <p class="text-muted">กรอกข้อมูลเพื่อลงทะเบียนเข้าใช้งานระบบ</p>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>หมายเหตุ:</strong> หลังลงทะเบียน ท่านจะต้องรอการอนุมัติจากผู้ดูแลระบบก่อนจึงจะสามารถเข้าสู่ระบบได้
+            </div>
+            
+            <form id="registerTeacherForm">
+                <!-- Profile Image Upload (moved to top) -->
+                <div class="mb-4 text-center">
+                    <label class="form-label">รูปโปรไฟล์</label>
+                    <div class="d-flex flex-column align-items-center gap-2">
+                        <img id="previewImage" src="img/placeholder.png" class="rounded-circle shadow" style="width: 100px; height: 100px; object-fit: cover; border: 3px solid #28a745;">
+                        <div>
+                            <input type="file" class="form-control" name="teacher_image" id="imageInput" accept="image/*" onchange="previewProfileImage(this)">
+                            <div class="form-text">รองรับ JPG, PNG, GIF (ไม่บังคับ)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">ชื่อผู้ใช้ (Username) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="username" required 
+                               pattern="[a-zA-Z0-9_]+" title="ใช้ตัวอักษรภาษาอังกฤษ ตัวเลข หรือ _ เท่านั้น">
+                        <div class="form-text">ใช้ตัวอักษรภาษาอังกฤษ, ตัวเลข หรือ _ เท่านั้น</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">รหัสผ่าน (Password) <span class="text-danger">*</span></label>
+                        <div class="position-relative">
+                            <input type="password" class="form-control" name="password" id="passwordInput" placeholder="อย่างน้อย 4 ตัวอักษร" required minlength="4" style="padding-right: 40px;">
+                            <span class="position-absolute top-50 end-0 translate-middle-y me-3" onclick="togglePassword()" style="cursor: pointer;">
+                                <i class="bi bi-eye" id="toggleIcon"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="full_name" placeholder="เช่น อ.ดวง ทดสอบ" required>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">แผนกวิชา</label>
+                        <select class="form-select" name="department_id" id="deptSelect">
+                            <option value="">-- ไม่ระบุ --</option>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">เบอร์โทรศัพท์</label>
+                        <input type="tel" class="form-control" name="phone" placeholder="เช่น 0812345678" 
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">อีเมล</label>
+                    <input type="email" class="form-control" name="email" placeholder="เช่น teacher@email.com">
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-person-plus-fill me-2"></i>ลงทะเบียน
+                    </button>
+                    <a href="index.html" class="btn btn-link">
+                        <i class="bi bi-arrow-left me-1"></i>กลับไปหน้าเข้าสู่ระบบ
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+        // Toggle Password Visibility
+        function togglePassword() {
+            const input = document.getElementById('passwordInput');
+            const icon = document.getElementById('toggleIcon');
+            
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove("bi-eye");
+                icon.classList.add("bi-eye-slash");
+            } else {
+                input.type = "password";
+                icon.classList.remove("bi-eye-slash");
+                icon.classList.add("bi-eye");
+            }
+        }
+
+        // Fetch Departments
+        fetch('/api/auth/departments')
+        .then(res => res.json())
+        .then(data => {
+            const select = document.getElementById('deptSelect');
+            if(Array.isArray(data)) {
+                data.forEach(dept => {
+                    const option = document.createElement('option');
+                    option.value = dept.department_id;
+                    option.textContent = dept.department_name;
+                    select.appendChild(option);
+                });
+            }
+        });
+
+        // Preview Profile Image
+        function previewProfileImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('previewImage').src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Form Submit Handler - Using FormData for file upload
+        document.getElementById('registerTeacherForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            
+            // Remove empty department_id
+            if (formData.get('department_id') === '') {
+                formData.delete('department_id');
+            }
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>กำลังลงทะเบียน...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/auth/register/teacher', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ ลงทะเบียนสำเร็จ!\n\nกรุณารอการอนุมัติจากผู้ดูแลระบบก่อนเข้าสู่ระบบ');
+                    window.location.href = 'index.html';
+                } else {
+                    alert('❌ เกิดข้อผิดพลาด: ' + result.error);
+                }
+            } catch (err) {
+                alert('❌ เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

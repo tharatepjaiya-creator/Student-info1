@@ -456,9 +456,19 @@ router.put('/groups/assign-advisor-by-name', async (req, res) => {
         // Get advisor name
         let advisorName = null;
         if (advisor_id) {
-            const advisorResult = await db.query(`SELECT advisor_name FROM advisors WHERE advisor_id = $1`, [advisor_id]);
-            if (advisorResult.rows[0]) {
-                advisorName = advisorResult.rows[0].advisor_name;
+            // Check if it's a registered teacher (prefixed with T-)
+            if (String(advisor_id).startsWith('T-')) {
+                const teacherId = advisor_id.substring(2);
+                const teacherResult = await db.query(`SELECT full_name FROM teacher_advisors WHERE teacher_id = $1`, [teacherId]);
+                if (teacherResult.rows[0]) {
+                    advisorName = teacherResult.rows[0].full_name;
+                }
+            } else {
+                // Legacy advisor table
+                const advisorResult = await db.query(`SELECT advisor_name FROM advisors WHERE advisor_id = $1`, [advisor_id]);
+                if (advisorResult.rows[0]) {
+                    advisorName = advisorResult.rows[0].advisor_name;
+                }
             }
         }
         
@@ -496,6 +506,111 @@ router.put('/students/:id/assign-group', async (req, res) => {
         );
         
         res.json({ success: true, message: 'อัปเดตกลุ่มสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// =============================================
+// --- TEACHER ADVISOR (LOGIN) MANAGEMENT ---
+// =============================================
+
+// Get All Teacher Advisors
+router.get('/teacher-advisors', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT t.*, d.department_name 
+            FROM teacher_advisors t 
+            LEFT JOIN departments d ON t.department_id = d.department_id
+            ORDER BY t.is_approved ASC, t.created_at DESC
+        `);
+        
+        // Remove passwords from response
+        const teachers = result.rows.map(t => {
+            delete t.password;
+            return t;
+        });
+        
+        res.json(teachers);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get Pending Teacher Advisors (Not Approved)
+router.get('/teacher-advisors/pending', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT t.*, d.department_name 
+            FROM teacher_advisors t 
+            LEFT JOIN departments d ON t.department_id = d.department_id
+            WHERE t.is_approved = FALSE
+            ORDER BY t.created_at ASC
+        `);
+        
+        const teachers = result.rows.map(t => {
+            delete t.password;
+            return t;
+        });
+        
+        res.json(teachers);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Approve Teacher
+router.post('/teacher-advisors/:id/approve', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query('UPDATE teacher_advisors SET is_approved = TRUE WHERE teacher_id = $1', [id]);
+        res.json({ success: true, message: 'อนุมัติครูที่ปรึกษาเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update Teacher Advisor Info
+router.put('/teacher-advisors/:id', async (req, res) => {
+    const { id } = req.params;
+    const { full_name, phone, email, department_id, assigned_groups, is_approved } = req.body;
+    
+    try {
+        await db.query(`
+            UPDATE teacher_advisors 
+            SET full_name = $1, phone = $2, email = $3, department_id = $4, assigned_groups = $5, is_approved = $6
+            WHERE teacher_id = $7
+        `, [full_name, phone || null, email || null, department_id || null, assigned_groups || null, is_approved, id]);
+        
+        res.json({ success: true, message: 'อัปเดตข้อมูลครูที่ปรึกษาเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Assign Groups to Teacher
+router.post('/teacher-advisors/:id/assign-groups', async (req, res) => {
+    const { id } = req.params;
+    const { assigned_groups } = req.body;
+    
+    try {
+        await db.query(
+            'UPDATE teacher_advisors SET assigned_groups = $1 WHERE teacher_id = $2',
+            [assigned_groups || null, id]
+        );
+        
+        res.json({ success: true, message: 'กำหนดกลุ่มให้ครูที่ปรึกษาเรียบร้อยแล้ว' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete Teacher Advisor
+router.delete('/teacher-advisors/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query('DELETE FROM teacher_advisors WHERE teacher_id = $1', [id]);
+        res.json({ success: true, message: 'ลบครูที่ปรึกษาเรียบร้อยแล้ว' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

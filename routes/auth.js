@@ -143,6 +143,75 @@ router.post('/login/admin', async (req, res) => {
     }
 });
 
+// =============================================
+// TEACHER ADVISOR AUTHENTICATION
+// =============================================
+
+// Register Teacher (with optional profile image)
+router.post('/register/teacher', upload.single('teacher_image'), async (req, res) => {
+    const { username, password, full_name, phone, email, department_id } = req.body;
+    const teacher_image = req.file ? req.file.path : null; // Cloudinary URL
+    
+    if (!username || !password || !full_name) {
+        return res.status(400).json({ error: 'กรุณากรอก Username, Password และชื่อ-นามสกุล' });
+    }
+    
+    if (password.length < 4) {
+        return res.status(400).json({ error: 'รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร' });
+    }
+    
+    const saltRounds = 10;
+    try {
+        const hash = await bcrypt.hash(password, saltRounds);
+        
+        const query = `
+            INSERT INTO teacher_advisors (username, password, full_name, phone, email, department_id, teacher_image, is_approved) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE)
+            RETURNING teacher_id, username
+        `;
+        const values = [username.trim(), hash, full_name.trim(), phone || null, email || null, department_id || null, teacher_image];
+        
+        await db.query(query, values);
+        res.json({ success: true, message: 'ลงทะเบียนสำเร็จ กรุณารอการอนุมัติจากผู้ดูแลระบบ' });
+
+    } catch (err) {
+        if (err.message.includes('unique constraint') || err.message.includes('UNIQUE') || err.code === '23505') {
+            return res.status(400).json({ error: 'ชื่อผู้ใช้นี้ถูกใช้ไปแล้ว กรุณาเลือกชื่ออื่น' });
+        }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Teacher Login
+router.post('/login/teacher', async (req, res) => {
+    const { username, password } = req.body;
+    
+    try {
+        const result = await db.query("SELECT * FROM teacher_advisors WHERE username = $1", [username]);
+        const row = result.rows[0];
+
+        if (!row) return res.status(401).json({ error: 'ไม่พบข้อมูลผู้ใช้งาน' });
+        
+        // Check if approved
+        if (!row.is_approved) {
+            return res.status(401).json({ error: 'บัญชีของคุณยังไม่ได้รับการอนุมัติจากผู้ดูแลระบบ' });
+        }
+        
+        const match = await bcrypt.compare(password, row.password);
+        if (match) {
+            req.session.userId = row.teacher_id;
+            req.session.role = 'teacher';
+            req.session.userName = row.full_name;
+            req.session.assignedGroups = row.assigned_groups;
+            return res.json({ success: true, redirect: '/teacher_dashboard.html' });
+        } else {
+            return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Logout
 router.post('/logout', (req, res) => {
     req.session.destroy(err => {

@@ -42,6 +42,9 @@
                             <button class="btn btn-sm btn-outline-primary" onclick="openEditModal()">
                                 <i class="bi bi-pencil-square"></i> <span class="d-none d-sm-inline">แก้ไข</span>
                             </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="openAttendanceModal()">
+                                <i class="bi bi-calendar-check"></i> <span class="d-none d-sm-inline">เข้าแถว</span>
+                            </button>
                         </div>
                     </div>
                     <div id="studentInfo">
@@ -129,6 +132,67 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance History Modal -->
+    <div class="modal fade" id="attendanceModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-calendar-check me-2"></i>ประวัติการเข้าแถว</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Summary Cards -->
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center py-3">
+                                    <h6 class="mb-1"><i class="bi bi-flag-fill"></i> วันพุธ (หน้าเสาธง)</h6>
+                                    <div class="d-flex justify-content-center align-items-baseline gap-2">
+                                        <h2 id="wedPercentage" class="mb-0">-</h2>
+                                        <span>%</span>
+                                    </div>
+                                    <small id="wedDetail">-/- สัปดาห์</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center py-3">
+                                    <h6 class="mb-1"><i class="bi bi-building"></i> วันพฤหัส (หน้าแผนก)</h6>
+                                    <div class="d-flex justify-content-center align-items-baseline gap-2">
+                                        <h2 id="thuPercentage" class="mb-0">-</h2>
+                                        <span>%</span>
+                                    </div>
+                                    <small id="thuDetail">-/- สัปดาห์</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- History Table -->
+                    <h6 class="text-muted mb-2">รายละเอียดการเข้าแถว</h6>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>วันที่</th>
+                                    <th>ประเภท</th>
+                                    <th>สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceHistoryBody">
+                                <tr><td colspan="3" class="text-center text-muted py-3">กำลังโหลด...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
                 </div>
             </div>
         </div>
@@ -270,7 +334,7 @@
                         <p><strong>เบอร์โทรศัพท์:</strong> ${data.phone || '-'}</p>
                         <hr>
                         <p class="text-muted mb-2"><strong>ครูที่ปรึกษา</strong></p>
-                        <p><strong>ครูที่ปรึกษาประจำกลุ่ม:</strong> ${data.group_advisor || '-'}</p>
+                        <p><strong>ครูที่ปรึกษาประจำกลุ่ม:</strong> ${data.group_advisor ? `<a href="#" class="text-decoration-none text-primary fw-bold" onclick="openTeacherInfoModal('${data.group_advisor}'); return false;"><i class="bi bi-person-badge me-1"></i>${data.group_advisor}</a>` : '-'}</p>
                         <hr>
                         <p class="text-muted mb-2"><strong>ข้อมูลผู้ปกครอง</strong></p>
                         <p><strong>บิดา:</strong> ${data.father_name || '-'}</p>
@@ -383,7 +447,109 @@
                 });
             }
         }
+        // Open Teacher Info Modal
+        function openTeacherInfoModal(teacherName) {
+            if (!teacherName || teacherName === '-') return;
+            
+            fetch(`/api/teacher-public/info-by-name/${encodeURIComponent(teacherName)}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('ไม่พบข้อมูลครูที่ปรึกษา');
+                    return res.json();
+                })
+                .then(teacher => {
+                    document.getElementById('teacherInfoName').innerText = teacher.full_name || '-';
+                    document.getElementById('teacherInfoDept').innerText = teacher.department_name || '-';
+                    document.getElementById('teacherInfoPhone').innerText = teacher.phone || '-';
+                    document.getElementById('teacherInfoEmail').innerText = teacher.email || '-';
+                    
+                    const img = document.getElementById('teacherInfoImage');
+                    img.src = teacher.teacher_image || 'img/placeholder.png';
+                    img.onerror = () => { img.src = 'img/placeholder.png'; };
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('teacherInfoModal'));
+                    modal.show();
+                })
+                .catch(err => {
+                    alert('❌ ' + err.message);
+                });
+        }
+        
+        // ============================
+        // ATTENDANCE FUNCTIONS
+        // ============================
+        let attendanceModalInstance;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            attendanceModalInstance = new bootstrap.Modal(document.getElementById('attendanceModal'));
+        });
+        
+        function openAttendanceModal() {
+            // Load summary
+            fetch('/api/student/attendance/summary')
+                .then(res => res.json())
+                .then(data => {
+                    const { summary, maxWeeks } = data;
+                    
+                    document.getElementById('wedPercentage').innerText = summary.wednesday.percentage;
+                    document.getElementById('wedDetail').innerText = `${summary.wednesday.present}/${maxWeeks} สัปดาห์`;
+                    
+                    document.getElementById('thuPercentage').innerText = summary.thursday.percentage;
+                    document.getElementById('thuDetail').innerText = `${summary.thursday.present}/${maxWeeks} สัปดาห์`;
+                })
+                .catch(() => {
+                    document.getElementById('wedPercentage').innerText = '-';
+                    document.getElementById('thuPercentage').innerText = '-';
+                });
+            
+            // Load history
+            fetch('/api/student/attendance')
+                .then(res => res.json())
+                .then(records => {
+                    const tbody = document.getElementById('attendanceHistoryBody');
+                    
+                    if (records.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">ยังไม่มีประวัติการเข้าแถว</td></tr>';
+                    } else {
+                        tbody.innerHTML = records.map(r => `
+                            <tr>
+                                <td>${new Date(r.check_date).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                                <td>${r.check_type === 'wednesday' ? '<span class="badge bg-success">วันพุธ</span>' : '<span class="badge bg-primary">วันพฤหัส</span>'}</td>
+                                <td>${r.is_present ? '<span class="text-success"><i class="bi bi-check-circle-fill"></i> เข้าแถว</span>' : '<span class="text-danger"><i class="bi bi-x-circle-fill"></i> ขาด</span>'}</td>
+                            </tr>
+                        `).join('');
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('attendanceHistoryBody').innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3">ไม่สามารถโหลดข้อมูลได้</td></tr>';
+                });
+            
+            attendanceModalInstance.show();
+        }
     </script>
+
+    <!-- Teacher Info Modal -->
+    <div class="modal fade" id="teacherInfoModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title"><i class="bi bi-person-workspace"></i> ข้อมูลครูที่ปรึกษา</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="teacherInfoImage" src="img/placeholder.png" class="rounded-circle shadow mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #28a745;">
+                    <h4 id="teacherInfoName" class="text-success mb-3">-</h4>
+                    <div class="text-start">
+                        <p><i class="bi bi-building me-2 text-muted"></i><strong>แผนกวิชา:</strong> <span id="teacherInfoDept">-</span></p>
+                        <p><i class="bi bi-telephone me-2 text-muted"></i><strong>เบอร์โทร:</strong> <span id="teacherInfoPhone">-</span></p>
+                        <p><i class="bi bi-envelope me-2 text-muted"></i><strong>อีเมล:</strong> <span id="teacherInfoEmail">-</span></p>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
 

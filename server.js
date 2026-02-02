@@ -32,6 +32,13 @@ app.use(session({
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/student', require('./routes/student'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/teacher', require('./routes/teacher'));
+
+// Public Teacher Info API (for students to view advisor info)
+const teacherRoutes = require('./routes/teacher');
+if (teacherRoutes.publicRouter) {
+    app.use('/api/teacher-public', teacherRoutes.publicRouter);
+}
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
