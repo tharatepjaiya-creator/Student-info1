@@ -453,15 +453,32 @@ router.put('/groups/assign-advisor-by-name', async (req, res) => {
     const { group_name, advisor_id } = req.body;
     
     try {
-        // Get advisor name
+        // Get advisor name and update teacher's assigned_groups
         let advisorName = null;
+        let teacherId = null;
+        
         if (advisor_id) {
             // Check if it's a registered teacher (prefixed with T-)
             if (String(advisor_id).startsWith('T-')) {
-                const teacherId = advisor_id.substring(2);
-                const teacherResult = await db.query(`SELECT full_name FROM teacher_advisors WHERE teacher_id = $1`, [teacherId]);
+                teacherId = advisor_id.substring(2);
+                const teacherResult = await db.query(`SELECT teacher_id, full_name, assigned_groups FROM teacher_advisors WHERE teacher_id = $1`, [teacherId]);
                 if (teacherResult.rows[0]) {
                     advisorName = teacherResult.rows[0].full_name;
+                    
+                    // Update teacher's assigned_groups to include this group
+                    let currentGroups = teacherResult.rows[0].assigned_groups || '';
+                    let groupsArray = currentGroups.split(',').map(g => g.trim()).filter(g => g);
+                    
+                    // Add the new group if not already present
+                    if (!groupsArray.includes(group_name)) {
+                        groupsArray.push(group_name);
+                    }
+                    
+                    // Update teacher's assigned_groups
+                    await db.query(
+                        `UPDATE teacher_advisors SET assigned_groups = $1 WHERE teacher_id = $2`,
+                        [groupsArray.join(','), teacherId]
+                    );
                 }
             } else {
                 // Legacy advisor table
@@ -469,6 +486,23 @@ router.put('/groups/assign-advisor-by-name', async (req, res) => {
                 if (advisorResult.rows[0]) {
                     advisorName = advisorResult.rows[0].advisor_name;
                 }
+            }
+        }
+        
+        // If clearing the assignment (advisor_id is empty), remove the group from all teachers
+        if (!advisor_id || advisor_id === '') {
+            // Find who was previously assigned and remove this group from their list
+            const prevTeachers = await db.query(
+                `SELECT teacher_id, assigned_groups FROM teacher_advisors WHERE assigned_groups LIKE $1`,
+                [`%${group_name}%`]
+            );
+            
+            for (const teacher of prevTeachers.rows) {
+                let groupsArray = teacher.assigned_groups.split(',').map(g => g.trim()).filter(g => g && g !== group_name);
+                await db.query(
+                    `UPDATE teacher_advisors SET assigned_groups = $1 WHERE teacher_id = $2`,
+                    [groupsArray.join(',') || null, teacher.teacher_id]
+                );
             }
         }
         
@@ -485,6 +519,58 @@ router.put('/groups/assign-advisor-by-name', async (req, res) => {
             message: `อัปเดตครูที่ปรึกษากลุ่ม ${group_name} สำเร็จ (นักศึกษา ${updatedCount} คน)`,
             updated_students: updatedCount
         });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get current advisor assignments for all groups
+router.get('/groups/advisor-assignments', async (req, res) => {
+    try {
+        // Get distinct group_advisor for each student_group
+        const result = await db.query(`
+            SELECT DISTINCT student_group, group_advisor 
+            FROM students 
+            WHERE student_group IS NOT NULL AND group_advisor IS NOT NULL AND group_advisor != ''
+        `);
+        
+        // Also get teacher_advisors with their assigned_groups
+        const teacherResult = await db.query(`
+            SELECT teacher_id, full_name, assigned_groups 
+            FROM teacher_advisors 
+            WHERE is_approved = TRUE AND assigned_groups IS NOT NULL
+        `);
+        
+        // Build a map of group_name -> advisor info
+        const assignments = {};
+        
+        // From students table
+        result.rows.forEach(row => {
+            if (row.student_group && row.group_advisor) {
+                assignments[row.student_group] = {
+                    advisor_name: row.group_advisor,
+                    source: 'students'
+                };
+            }
+        });
+        
+        // From teacher_advisors table (overwrite if exists - more authoritative)
+        teacherResult.rows.forEach(teacher => {
+            if (teacher.assigned_groups) {
+                const groups = teacher.assigned_groups.split(',').map(g => g.trim());
+                groups.forEach(groupName => {
+                    if (groupName) {
+                        assignments[groupName] = {
+                            teacher_id: teacher.teacher_id,
+                            advisor_name: teacher.full_name,
+                            source: 'teacher_advisors'
+                        };
+                    }
+                });
+            }
+        });
+        
+        res.json(assignments);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

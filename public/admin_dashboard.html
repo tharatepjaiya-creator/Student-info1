@@ -1141,23 +1141,30 @@
             }
         }
         
-        // =============================================
         // GROUP MANAGEMENT FUNCTIONS
         // =============================================
         
+        // Global variable to store current advisor assignments
+        let groupAdvisorAssignments = {};
+        
         function loadGroups() {
-            // Use new API that generates 25 groups per department (5 levels x 5 groups)
-            fetch('/api/admin/groups-by-department')
-                .then(res => res.json())
-                .then(data => {
-                    const tbody = document.getElementById('groupsTableBody');
-                    
-                    if (data.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">
-                            ยังไม่มีแผนกในระบบ
-                        </td></tr>`;
-                        return;
-                    }
+            // Fetch both groups and current advisor assignments
+            Promise.all([
+                fetch('/api/admin/groups-by-department').then(res => res.json()),
+                fetch('/api/admin/groups/advisor-assignments').then(res => res.json())
+            ])
+            .then(([data, assignments]) => {
+                const tbody = document.getElementById('groupsTableBody');
+                
+                // Store assignments globally
+                groupAdvisorAssignments = assignments || {};
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">
+                        ยังไม่มีแผนกในระบบ
+                    </td></tr>`;
+                    return;
+                }
                     
                     // Group by department, then by level
                     const groupsByDept = {};
@@ -1226,10 +1233,18 @@
                             
                             // Group rows for this level - Enhanced design
                             level.groups.forEach((g, idx) => {
+                                // Check if this group has an assigned advisor
+                                const currentAssignment = groupAdvisorAssignments[g.group_name];
+                                const currentTeacherId = currentAssignment?.teacher_id;
+                                const currentAdvisorName = currentAssignment?.advisor_name;
+                                
                                 // Use teacher_id and full_name from teacher_advisors API
-                                const advisorOptions = allAdvisors.filter(a => a.is_approved).map(a => 
-                                    `<option value="T-${a.teacher_id}">${a.full_name}</option>`
-                                ).join('');
+                                // Pre-select the advisor if assigned
+                                const advisorOptions = allAdvisors.filter(a => a.is_approved).map(a => {
+                                    const isSelected = (currentTeacherId && a.teacher_id == currentTeacherId) || 
+                                                      (currentAdvisorName && a.full_name === currentAdvisorName);
+                                    return `<option value="T-${a.teacher_id}" ${isSelected ? 'selected' : ''}>${a.full_name}</option>`;
+                                }).join('');
                                 
                                 const rowBg = idx % 2 === 0 ? '#ffffff' : '#fafbff';
                                 
@@ -1371,7 +1386,7 @@
         // Load Teacher Advisors
         function loadTeacherAdvisors() {
             const tbody = document.getElementById('teacherAdvisorsTableBody');
-            const badge = document.getElementById('pendingTeacherBadge');
+            const badge = document.getElementById('requestBadge');
             
             fetch('/api/admin/teacher-advisors')
                 .then(res => res.json())
@@ -1381,18 +1396,21 @@
                         return;
                     }
                     
-                    if (data.length === 0) {
+                    if (!Array.isArray(data) || data.length === 0) {
                         tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">ไม่พบข้อมูลครูที่ปรึกษา</td></tr>`;
+                        if (badge) badge.style.display = 'none';
                         return;
                     }
                     
                     // Count pending
                     const pendingCount = data.filter(t => !t.is_approved).length;
-                    if (pendingCount > 0) {
-                        badge.innerText = `${pendingCount} รอการอนุมัติ`;
-                        badge.style.display = 'inline-block';
-                    } else {
-                        badge.style.display = 'none';
+                    if (badge) {
+                        if (pendingCount > 0) {
+                            badge.innerText = pendingCount;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
                     }
                     
                     tbody.innerHTML = data.map(t => {
